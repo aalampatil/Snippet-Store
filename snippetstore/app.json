@@ -4,33 +4,37 @@
     "slug": "snippetstore",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/expo.icon/Assets/grid.png",
     "scheme": "snippetstore",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "androidStatusBar": {
+      "backgroundColor": "#00000000",
+      "barStyle": "dark-content",
+      "translucent": true
+    },
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#0e0e0e",
+        "foregroundImage": "./assets/expo.icon/Assets/grid.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/expo.icon/Assets/grid.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#0e0e0e",
           "android": {
-            "image": "./assets/images/splash-icon.png",
+            "image": "./assets/expo.icon/Assets/grid.png",
             "imageWidth": 76
           }
         }

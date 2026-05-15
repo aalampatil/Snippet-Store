@@ -1,22 +1,38 @@
 import express from "express";
 import cors from "cors";
+import { env } from "./config/env.js";
+import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
+import { categoryRouter } from "./modules/categories/category.routes.js";
+import { seedDefaultCategories } from "./modules/categories/category.service.js";
+import { snippetRouter } from "./modules/snippets/snippet.routes.js";
 
 async function createApp() {
-  const port = process.env.PORT || 3000;
   const app = express();
-  app.use(cors());
+
+  app.use(cors({ origin: env.corsOrigin === "*" ? true : env.corsOrigin }));
+  app.use(express.json({ limit: "1mb" }));
 
   app.get("/health", (req, res) => {
-    res.send("OK 200");
+    res.json({ status: "ok" });
   });
 
   app.get("/", (req, res) => {
-    res.send("snippet store");
+    res.json({ name: "snippet store" });
   });
 
-  app.listen(port, () => {
-    console.log(`server is up on http://localhost:${port}`);
+  app.use("/api/categories", categoryRouter);
+  app.use("/api/snippets", snippetRouter);
+  app.use(notFoundHandler);
+  app.use(errorHandler);
+
+  await seedDefaultCategories();
+
+  app.listen(env.port, "0.0.0.0", () => {
+    console.log(`server is up on http://localhost:${env.port}`);
   });
 }
 
-createApp();
+createApp().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

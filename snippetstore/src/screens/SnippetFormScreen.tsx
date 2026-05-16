@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { createSnippet, fetchCategories, fetchSnippet, updateSnippet } from "@/services/snippetApi";
 import type { Category, SnippetPayload } from "@/types/snippet";
 import { getErrorMessage } from "@/utils/errors";
+import { useRequireAuth } from "@/utils/useRequireAuth";
 
 type SnippetFormScreenProps = {
   snippetId?: number;
@@ -17,6 +18,7 @@ type SnippetFormScreenProps = {
 
 export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
   const router = useRouter();
+  const { user, loading: authLoading } = useRequireAuth();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -28,6 +30,14 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [loading, setLoading] = useState(Boolean(snippetId));
   const [saving, setSaving] = useState(false);
+
+  if (authLoading || !user) {
+    return (
+      <Screen style={styles.center}>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
+  }
 
   const loadData = useCallback(async () => {
     try {
@@ -96,7 +106,7 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.title}>{snippetId ? "Edit snippet" : "New snippet"}</Text>
-          <AppButton title="Categories" tone="secondary" onPress={() => router.push("/categories/index")} />
+          <AppButton title="Categories" tone="secondary" onPress={() => router.push("/categories" as any)} />
         </View>
 
         <AppTextInput label="Title" value={title} onChangeText={setTitle} placeholder="Docker compose for Postgres" />

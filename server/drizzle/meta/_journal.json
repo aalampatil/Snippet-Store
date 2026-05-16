@@ -15,6 +15,13 @@
       "when": 1778847371464,
       "tag": "0001_past_black_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778942045878,
+      "tag": "0002_fearless_roulette",
+      "breakpoints": true
     }
   ]
 }

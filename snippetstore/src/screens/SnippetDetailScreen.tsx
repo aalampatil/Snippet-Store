@@ -9,6 +9,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { deleteSnippet, fetchSnippet } from "@/services/snippetApi";
 import type { Snippet } from "@/types/snippet";
 import { getErrorMessage } from "@/utils/errors";
+import { useRequireAuth } from "@/utils/useRequireAuth";
 
 type SnippetDetailScreenProps = {
   snippetId: number;
@@ -16,10 +17,19 @@ type SnippetDetailScreenProps = {
 
 export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
   const router = useRouter();
+  const { user, loading: authLoading } = useRequireAuth();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [loading, setLoading] = useState(true);
+
+  if (authLoading || !user) {
+    return (
+      <Screen style={styles.center}>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
+  }
 
   const loadSnippet = useCallback(async () => {
     try {

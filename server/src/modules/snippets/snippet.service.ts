@@ -18,9 +18,11 @@ export type SnippetListFilters = {
   limit: number;
 };
 
-export async function listSnippets(filters: SnippetListFilters) {
+export async function listSnippets(userId: number, filters: SnippetListFilters) {
   const conditions = [];
   const offset = (filters.page - 1) * filters.limit;
+
+  conditions.push(eq(snippets.userId, userId));
 
   if (filters.categoryId) {
     conditions.push(eq(snippets.categoryId, filters.categoryId));
@@ -79,7 +81,7 @@ export async function listSnippets(filters: SnippetListFilters) {
   };
 }
 
-export async function getSnippet(id: number) {
+export async function getSnippetForUser(userId: number, id: number) {
   const [snippet] = await db
     .select({
       id: snippets.id,
@@ -101,41 +103,44 @@ export async function getSnippet(id: number) {
     })
     .from(snippets)
     .leftJoin(categories, eq(snippets.categoryId, categories.id))
-    .where(eq(snippets.id, id))
+    .where(and(eq(snippets.id, id), eq(snippets.userId, userId)))
     .limit(1);
 
   return snippet;
 }
 
-export async function createSnippet(input: SnippetInput) {
+export async function createSnippet(userId: number, input: SnippetInput) {
   const [snippet] = await db
     .insert(snippets)
-    .values(toSnippetValues(input))
+    .values(toSnippetValues(userId, input))
     .returning();
 
   if (!snippet) {
     throw new Error("Snippet could not be created.");
   }
 
-  return getSnippet(snippet.id);
+  return getSnippetForUser(userId, snippet.id);
 }
 
-export async function updateSnippet(id: number, input: SnippetInput) {
+export async function updateSnippet(userId: number, id: number, input: SnippetInput) {
   const [snippet] = await db
     .update(snippets)
-    .set({ ...toSnippetValues(input), updatedAt: new Date() })
-    .where(eq(snippets.id, id))
+    .set({ ...toSnippetValues(userId, input), updatedAt: new Date() })
+    .where(and(eq(snippets.id, id), eq(snippets.userId, userId)))
     .returning();
 
-  return snippet ? getSnippet(snippet.id) : undefined;
+  return snippet ? getSnippetForUser(userId, snippet.id) : undefined;
 }
 
-export async function deleteSnippet(id: number) {
-  const [snippet] = await db.delete(snippets).where(eq(snippets.id, id)).returning();
+export async function deleteSnippet(userId: number, id: number) {
+  const [snippet] = await db
+    .delete(snippets)
+    .where(and(eq(snippets.id, id), eq(snippets.userId, userId)))
+    .returning();
   return snippet;
 }
 
-function toSnippetValues(input: SnippetInput): NewSnippet {
+function toSnippetValues(userId: number, input: SnippetInput): NewSnippet {
   return {
     title: input.title,
     note: input.note || null,
@@ -143,5 +148,6 @@ function toSnippetValues(input: SnippetInput): NewSnippet {
     language: input.language || null,
     project: input.project || null,
     categoryId: input.categoryId ?? null,
+    userId,
   };
 }

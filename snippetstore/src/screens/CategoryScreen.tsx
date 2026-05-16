@@ -8,15 +8,25 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { createCategory, deleteCategory, fetchCategories } from "@/services/snippetApi";
 import type { Category } from "@/types/snippet";
 import { getErrorMessage } from "@/utils/errors";
+import { useRequireAuth } from "@/utils/useRequireAuth";
 
 export function CategoryScreen() {
   const { colors } = useTheme();
   const styles = createStyles(colors);
+  const { user, loading: authLoading } = useRequireAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  if (authLoading || !user) {
+    return (
+      <Screen style={styles.center}>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
+  }
 
   const loadCategories = async () => {
     try {

@@ -4,11 +4,14 @@ import { Platform, StatusBar as NativeStatusBar, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <RootStack />
+      <AuthProvider>
+        <RootStack />
+      </AuthProvider>
     </ThemeProvider>
   );
 }
@@ -40,6 +43,8 @@ function RootStack() {
         }}
       >
         <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
         <Stack.Screen name="snippets/new" />
         <Stack.Screen name="snippets/[id]" />
         <Stack.Screen name="snippets/[id]/edit" />

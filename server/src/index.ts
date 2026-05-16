@@ -5,6 +5,7 @@ import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
 import { categoryRouter } from "./modules/categories/category.routes.js";
 import { seedDefaultCategories } from "./modules/categories/category.service.js";
 import { snippetRouter } from "./modules/snippets/snippet.routes.js";
+import { authRouter } from "./modules/auth/auth.routes.js";
 
 async function createApp() {
   const app = express();
@@ -21,6 +22,7 @@ async function createApp() {
   });
 
   app.use("/api/categories", categoryRouter);
+  app.use("/api/auth", authRouter);
   app.use("/api/snippets", snippetRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);

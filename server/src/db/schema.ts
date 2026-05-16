@@ -1,5 +1,17 @@
 import { index, integer, pgTable, text, timestamp, varchar } from "drizzle-orm/pg-core";
 
+export const users = pgTable(
+  "users",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    email: varchar({ length: 255 }).notNull().unique(),
+    passwordHash: text().notNull(),
+    createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index("users_email_idx").on(table.email)],
+);
+
 export const categories = pgTable(
   "categories",
   {
@@ -23,12 +35,14 @@ export const snippets = pgTable(
     content: text().notNull(),
     language: varchar({ length: 80 }),
     project: varchar({ length: 120 }),
+    userId: integer().references(() => users.id, { onDelete: "cascade" }),
     categoryId: integer().references(() => categories.id, { onDelete: "set null" }),
     createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     index("snippets_category_id_idx").on(table.categoryId),
+    index("snippets_user_id_idx").on(table.userId),
     index("snippets_updated_at_idx").on(table.updatedAt),
     index("snippets_title_idx").on(table.title),
     index("snippets_language_idx").on(table.language),
@@ -38,5 +52,7 @@ export const snippets = pgTable(
 
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
 export type Snippet = typeof snippets.$inferSelect;
 export type NewSnippet = typeof snippets.$inferInsert;

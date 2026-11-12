@@ -32,9 +32,16 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     return;
   }
 
-  if (env.nodeEnv !== "production") {
-    console.error(error);
+  if (error instanceof SyntaxError && "body" in error) {
+    res.status(400).json({ message: "Invalid JSON body." });
+    return;
   }
+  if (error && typeof error === "object" && "type" in error && error.type === "entity.too.large") {
+    res.status(413).json({ message: "Request body is too large." });
+    return;
+  }
+  // Log a classification, never SQL parameters, passwords, session tokens, or email links.
+  console.error("Unhandled request error:", error instanceof Error ? error.name : "UnknownError");
 
   res.status(500).json({ message: "Internal server error." });
 };

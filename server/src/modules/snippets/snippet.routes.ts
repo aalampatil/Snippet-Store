@@ -23,7 +23,7 @@ const snippetInputSchema = z.object({
   project: nullableTrimmedString(120),
   categoryId: z
     .union([z.coerce.number().int().positive(), z.null(), z.literal(""), z.undefined()])
-    .transform((value) => (typeof value === "number" ? value : null)),
+    .transform((value) => (typeof value === "number" ? value : null)).default(null),
 });
 
 const listQuerySchema = paginationQuerySchema.extend({

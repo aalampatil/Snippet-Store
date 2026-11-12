@@ -22,6 +22,13 @@
       "when": 1778942045878,
       "tag": "0002_fearless_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794496617096,
+      "tag": "0003_outgoing_celestials",
+      "breakpoints": true
     }
   ]
 }

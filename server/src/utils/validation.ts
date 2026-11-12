@@ -12,5 +12,6 @@ export const paginationQuerySchema = z.object({
 export function nullableTrimmedString(max: number) {
   return z
     .union([z.string().trim().max(max), z.null(), z.undefined()])
-    .transform((value) => (typeof value === "string" && value.length > 0 ? value : null));
+    .transform((value) => (typeof value === "string" && value.length > 0 ? value : null))
+    .default(null);
 }

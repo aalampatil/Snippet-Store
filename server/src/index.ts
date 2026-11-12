@@ -1,40 +1,29 @@
-import express from "express";
-import cors from "cors";
+import { lt } from "drizzle-orm";
+import { createApp } from "./app.js";
 import { env } from "./config/env.js";
-import { errorHandler, notFoundHandler } from "./middlewares/error-handler.js";
-import { categoryRouter } from "./modules/categories/category.routes.js";
-import { seedDefaultCategories } from "./modules/categories/category.service.js";
-import { snippetRouter } from "./modules/snippets/snippet.routes.js";
-import { authRouter } from "./modules/auth/auth.routes.js";
+import { db, pool } from "./db/index.js";
+import { authTokens, sessions } from "./db/schema.js";
 
-async function createApp() {
-  const app = express();
-
-  app.use(cors({ origin: env.corsOrigin === "*" ? true : env.corsOrigin }));
-  app.use(express.json({ limit: "1mb" }));
-
-  app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
-  });
-
-  app.get("/", (req, res) => {
-    res.json({ name: "snippet store" });
-  });
-
-  app.use("/api/categories", categoryRouter);
-  app.use("/api/auth", authRouter);
-  app.use("/api/snippets", snippetRouter);
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-  await seedDefaultCategories();
-
-  app.listen(env.port, "0.0.0.0", () => {
-    console.log(`server is up on http://localhost:${env.port}`);
-  });
+async function start() {
+  await pool.query("select 1");
+  const server = createApp().listen(env.port, "0.0.0.0", () => console.log(`Server listening on port ${env.port}`));
+  const cleanup = setInterval(() => {
+    void Promise.all([
+      db.delete(sessions).where(lt(sessions.expiresAt, new Date())),
+      db.delete(authTokens).where(lt(authTokens.expiresAt, new Date())),
+    ]).catch(() => console.error("Expired credential cleanup failed."));
+  }, 60 * 60 * 1000);
+  cleanup.unref();
+  let stopping = false;
+  const shutdown = () => {
+    if (stopping) return;
+    stopping = true;
+    clearInterval(cleanup);
+    const deadline = setTimeout(() => process.exit(1), 25000);
+    deadline.unref();
+    server.close(() => { void pool.end().then(() => { clearTimeout(deadline); process.exit(0); }); });
+  };
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
 }
-
-createApp().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+start().catch(() => { console.error("Server startup failed. Check database connectivity and configuration."); process.exit(1); });

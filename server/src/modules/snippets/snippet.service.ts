@@ -1,6 +1,7 @@
 import { and, count, desc, eq, ilike, or } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { categories, snippets, type NewSnippet } from "../../db/schema.js";
+import { AppError } from "../../middlewares/error-handler.js";
 
 export type SnippetInput = {
   title: string;
@@ -110,6 +111,7 @@ export async function getSnippetForUser(userId: number, id: number) {
 }
 
 export async function createSnippet(userId: number, input: SnippetInput) {
+  await validateCategory(userId, input.categoryId);
   const [snippet] = await db
     .insert(snippets)
     .values(toSnippetValues(userId, input))
@@ -123,6 +125,7 @@ export async function createSnippet(userId: number, input: SnippetInput) {
 }
 
 export async function updateSnippet(userId: number, id: number, input: SnippetInput) {
+  await validateCategory(userId, input.categoryId);
   const [snippet] = await db
     .update(snippets)
     .set({ ...toSnippetValues(userId, input), updatedAt: new Date() })
@@ -150,4 +153,11 @@ function toSnippetValues(userId: number, input: SnippetInput): NewSnippet {
     categoryId: input.categoryId ?? null,
     userId,
   };
+}
+
+async function validateCategory(userId: number, categoryId?: number | null) {
+  if (categoryId == null) return;
+  const [category] = await db.select({ id: categories.id }).from(categories)
+    .where(and(eq(categories.id, categoryId), eq(categories.userId, userId))).limit(1);
+  if (!category) throw new AppError("Category not found.", 400);
 }

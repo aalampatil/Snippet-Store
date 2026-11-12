@@ -15,7 +15,8 @@ export function createApp() {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", env.trustProxyHops);
-  app.use(helmet({ referrerPolicy: { policy: "no-referrer" } }));
+  // Keep query tokens out of referrers while preserving Origin on same-site HTML form posts.
+  app.use(helmet({ referrerPolicy: { policy: "strict-origin" } }));
   app.use(
     cors({
       origin: env.corsOrigins,

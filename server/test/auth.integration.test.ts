@@ -199,6 +199,7 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
     assert.equal(me.headers.get("cache-control"), "no-store");
     assert.equal(me.headers.get("x-powered-by"), null);
     assert.ok(me.headers.get("content-security-policy"));
+    assert.equal(me.headers.get("referrer-policy"), "strict-origin");
     assert.equal(
       (
         await request("/api/categories", "POST", { name: "Attack" }, token, {
@@ -321,14 +322,12 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
     assert.equal((await request("/api/auth/me", "GET", undefined, token)).status, 401);
     token = (await request("/api/auth/login", "POST", { email, password: nextPassword })).body.data
       .token;
-    await db
-      .insert(authTokens)
-      .values({
-        tokenHash: hashToken("a".repeat(64)),
-        purpose: "reset",
-        userId,
-        expiresAt: new Date(Date.now() - 1000),
-      });
+    await db.insert(authTokens).values({
+      tokenHash: hashToken("a".repeat(64)),
+      purpose: "reset",
+      userId,
+      expiresAt: new Date(Date.now() - 1000),
+    });
     assert.equal(
       (await request("/api/auth/reset", "POST", { token: "a".repeat(64), password: nextPassword }))
         .status,

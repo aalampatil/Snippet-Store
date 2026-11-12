@@ -35,7 +35,12 @@ export function CategoryScreen() {
     if (!authLoading && user) void loadCategories();
   }, [authLoading, user]);
 
-  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
+  if (authLoading || !user)
+    return (
+      <Screen>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
 
   const addCategory = async () => {
     if (!name.trim()) {
@@ -79,14 +84,23 @@ export function CategoryScreen() {
       <View style={styles.content}>
         <Text style={styles.title}>Categories</Text>
         <View style={styles.form}>
-          <AppTextInput label="Name" value={name} onChangeText={setName} placeholder="API Request" />
+          <AppTextInput
+            label="Name"
+            value={name}
+            onChangeText={setName}
+            placeholder="API Request"
+          />
           <AppTextInput
             label="Note"
             value={description}
             onChangeText={setDescription}
             placeholder="What this category is for"
           />
-          <AppButton title={saving ? "Adding..." : "Add category"} onPress={addCategory} disabled={saving} />
+          <AppButton
+            title={saving ? "Adding..." : "Add category"}
+            onPress={addCategory}
+            disabled={saving}
+          />
         </View>
 
         {loading ? (
@@ -102,7 +116,9 @@ export function CategoryScreen() {
               <View style={styles.categoryCard}>
                 <View style={styles.categoryText}>
                   <Text style={styles.categoryName}>{item.name}</Text>
-                  {item.description ? <Text style={styles.categoryDescription}>{item.description}</Text> : null}
+                  {item.description ? (
+                    <Text style={styles.categoryDescription}>{item.description}</Text>
+                  ) : null}
                 </View>
                 <AppButton title="Delete" tone="danger" onPress={() => removeCategory(item)} />
               </View>

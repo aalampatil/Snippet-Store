@@ -14,13 +14,18 @@ export async function readSession() {
 }
 export async function writeSession(token: string | null) {
   if (!token) currentToken = null;
-  const write = pendingWrite.catch(() => {}).then(async () => {
-    if (Platform.OS !== "web") {
-      if (token) await SecureStore.setItemAsync(KEY, token, { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY });
-      else await SecureStore.deleteItemAsync(KEY);
-    }
-    currentToken = token;
-  });
+  const write = pendingWrite
+    .catch(() => {})
+    .then(async () => {
+      if (Platform.OS !== "web") {
+        if (token)
+          await SecureStore.setItemAsync(KEY, token, {
+            keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+          });
+        else await SecureStore.deleteItemAsync(KEY);
+      }
+      currentToken = token;
+    });
   pendingWrite = write;
   await write;
 }

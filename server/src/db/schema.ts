@@ -1,4 +1,12 @@
-import { index, integer, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable(
   "users",
@@ -25,24 +33,44 @@ export const categories = pgTable(
     createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [index("categories_name_idx").on(table.name),
+  (table) => [
+    index("categories_name_idx").on(table.name),
     uniqueIndex("categories_user_name_idx").on(table.userId, table.name),
-    uniqueIndex("categories_user_slug_idx").on(table.userId, table.slug)],
+    uniqueIndex("categories_user_slug_idx").on(table.userId, table.slug),
+  ],
 );
 
-export const sessions = pgTable("sessions", {
-  tokenHash: varchar({ length: 64 }).primaryKey(),
-  userId: integer().notNull().references(() => users.id, { onDelete: "cascade" }),
-  expiresAt: timestamp({ withTimezone: true }).notNull(),
-  createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("sessions_user_idx").on(table.userId), index("sessions_expiry_idx").on(table.expiresAt)]);
+export const sessions = pgTable(
+  "sessions",
+  {
+    tokenHash: varchar({ length: 64 }).primaryKey(),
+    userId: integer()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+    createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("sessions_user_idx").on(table.userId),
+    index("sessions_expiry_idx").on(table.expiresAt),
+  ],
+);
 
-export const authTokens = pgTable("auth_tokens", {
-  tokenHash: varchar({ length: 64 }).primaryKey(),
-  userId: integer().notNull().references(() => users.id, { onDelete: "cascade" }),
-  purpose: varchar({ length: 16 }).notNull(),
-  expiresAt: timestamp({ withTimezone: true }).notNull(),
-}, (table) => [index("auth_tokens_user_idx").on(table.userId), index("auth_tokens_expiry_idx").on(table.expiresAt)]);
+export const authTokens = pgTable(
+  "auth_tokens",
+  {
+    tokenHash: varchar({ length: 64 }).primaryKey(),
+    userId: integer()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    purpose: varchar({ length: 16 }).notNull(),
+    expiresAt: timestamp({ withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("auth_tokens_user_idx").on(table.userId),
+    index("auth_tokens_expiry_idx").on(table.expiresAt),
+  ],
+);
 
 export const snippets = pgTable(
   "snippets",

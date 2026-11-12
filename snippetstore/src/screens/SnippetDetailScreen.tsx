@@ -40,7 +40,12 @@ export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
     }, [loadSnippet, authLoading, user]),
   );
 
-  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
+  if (authLoading || !user)
+    return (
+      <Screen>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
 
   const remove = () => {
     Alert.alert("Delete snippet?", "This cannot be undone.", [
@@ -103,7 +108,9 @@ export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
           </View>
           <AppButton
             title="Edit"
-            onPress={() => router.push({ pathname: "/snippets/[id]/edit", params: { id: snippet.id } })}
+            onPress={() =>
+              router.push({ pathname: "/snippets/[id]/edit", params: { id: snippet.id } })
+            }
           />
         </View>
 

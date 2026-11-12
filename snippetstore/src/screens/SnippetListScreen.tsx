@@ -1,5 +1,13 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  FlatList,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { AppButton } from "@/components/AppButton";
 import { AppTextInput } from "@/components/AppTextInput";
@@ -62,7 +70,12 @@ export function SnippetListScreen() {
     loadData();
   };
 
-  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
+  if (authLoading || !user)
+    return (
+      <Screen>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
 
   return (
     <Screen>
@@ -85,8 +98,16 @@ export function SnippetListScreen() {
           placeholder="Search title, note, command, config..."
           returnKeyType="search"
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
-          <CategoryPill label="All" active={selectedCategoryId === null} onPress={() => setSelectedCategoryId(null)} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoryRow}
+        >
+          <CategoryPill
+            label="All"
+            active={selectedCategoryId === null}
+            onPress={() => setSelectedCategoryId(null)}
+          />
           {categories.map((category) => (
             <CategoryPill
               key={category.id}
@@ -110,16 +131,27 @@ export function SnippetListScreen() {
           data={snippets}
           keyExtractor={(item) => String(item.id)}
           contentContainerStyle={styles.list}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.accent}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>No snippets yet</Text>
-              <Text style={styles.emptyText}>Add code, commands, or project config notes you reuse often.</Text>
+              <Text style={styles.emptyText}>
+                Add code, commands, or project config notes you reuse often.
+              </Text>
               <AppButton title="Create snippet" onPress={() => router.push("/snippets/new")} />
             </View>
           }
           renderItem={({ item }) => (
-            <SnippetCard snippet={item} onPress={() => router.push({ pathname: "/snippets/[id]", params: { id: item.id } })} />
+            <SnippetCard
+              snippet={item}
+              onPress={() => router.push({ pathname: "/snippets/[id]", params: { id: item.id } })}
+            />
           )}
         />
       )}

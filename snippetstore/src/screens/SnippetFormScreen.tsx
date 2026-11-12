@@ -59,7 +59,12 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
     if (!authLoading && user) void loadData();
   }, [loadData, authLoading, user]);
 
-  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
+  if (authLoading || !user)
+    return (
+      <Screen>
+        <ActivityIndicator color={colors.accent} />
+      </Screen>
+    );
 
   const save = async () => {
     const payload: SnippetPayload = {
@@ -78,7 +83,9 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
 
     try {
       setSaving(true);
-      const saved = snippetId ? await updateSnippet(snippetId, payload) : await createSnippet(payload);
+      const saved = snippetId
+        ? await updateSnippet(snippetId, payload)
+        : await createSnippet(payload);
       router.replace({ pathname: "/snippets/[id]", params: { id: saved.id } });
     } catch (err) {
       Alert.alert("Could not save snippet", getErrorMessage(err));
@@ -100,15 +107,34 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.title}>{snippetId ? "Edit snippet" : "New snippet"}</Text>
-          <AppButton title="Categories" tone="secondary" onPress={() => router.push("/categories" as any)} />
+          <AppButton
+            title="Categories"
+            tone="secondary"
+            onPress={() => router.push("/categories" as any)}
+          />
         </View>
 
-        <AppTextInput label="Title" value={title} onChangeText={setTitle} placeholder="Docker compose for Postgres" />
-        <AppTextInput label="Note" value={note} onChangeText={setNote} placeholder="What this is for" multiline />
+        <AppTextInput
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Docker compose for Postgres"
+        />
+        <AppTextInput
+          label="Note"
+          value={note}
+          onChangeText={setNote}
+          placeholder="What this is for"
+          multiline
+        />
 
         <View style={styles.field}>
           <Text style={styles.label}>Category</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryRow}
+          >
             {categories.map((category) => (
               <CategoryPill
                 key={category.id}
@@ -123,10 +149,20 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
 
         <View style={styles.inlineFields}>
           <View style={styles.inlineField}>
-            <AppTextInput label="Language" value={language} onChangeText={setLanguage} placeholder="ts, bash, yaml" />
+            <AppTextInput
+              label="Language"
+              value={language}
+              onChangeText={setLanguage}
+              placeholder="ts, bash, yaml"
+            />
           </View>
           <View style={styles.inlineField}>
-            <AppTextInput label="Project" value={project} onChangeText={setProject} placeholder="optional" />
+            <AppTextInput
+              label="Project"
+              value={project}
+              onChangeText={setProject}
+              placeholder="optional"
+            />
           </View>
         </View>
 
@@ -142,7 +178,12 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
         />
 
         <View style={styles.actions}>
-          <AppButton title="Cancel" tone="secondary" onPress={() => router.back()} disabled={saving} />
+          <AppButton
+            title="Cancel"
+            tone="secondary"
+            onPress={() => router.back()}
+            disabled={saving}
+          />
           <AppButton title={saving ? "Saving..." : "Save"} onPress={save} disabled={saving} />
         </View>
       </ScrollView>

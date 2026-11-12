@@ -3,7 +3,11 @@ import { z } from "zod";
 import { AppError } from "../../middlewares/error-handler.js";
 import { asyncHandler } from "../../middlewares/async-handler.js";
 import { requireAuth } from "../../middlewares/auth.js";
-import { idParamSchema, nullableTrimmedString, paginationQuerySchema } from "../../utils/validation.js";
+import {
+  idParamSchema,
+  nullableTrimmedString,
+  paginationQuerySchema,
+} from "../../utils/validation.js";
 import {
   createSnippet,
   deleteSnippet,
@@ -23,7 +27,8 @@ const snippetInputSchema = z.object({
   project: nullableTrimmedString(120),
   categoryId: z
     .union([z.coerce.number().int().positive(), z.null(), z.literal(""), z.undefined()])
-    .transform((value) => (typeof value === "number" ? value : null)).default(null),
+    .transform((value) => (typeof value === "number" ? value : null))
+    .default(null),
 });
 
 const listQuerySchema = paginationQuerySchema.extend({
@@ -31,61 +36,76 @@ const listQuerySchema = paginationQuerySchema.extend({
   categoryId: z.coerce.number().int().positive().optional().catch(undefined),
 });
 
-snippetRouter.get("/", asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const query = listQuerySchema.parse(req.query);
+snippetRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const query = listQuerySchema.parse(req.query);
 
-  const filters = {
-    page: query.page,
-    limit: query.limit,
-    ...(query.search ? { search: query.search } : {}),
-    ...(query.categoryId ? { categoryId: query.categoryId } : {}),
-  };
+    const filters = {
+      page: query.page,
+      limit: query.limit,
+      ...(query.search ? { search: query.search } : {}),
+      ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+    };
 
-  const result = await listSnippets(userId, filters);
-  res.json(result);
-}));
+    const result = await listSnippets(userId, filters);
+    res.json(result);
+  }),
+);
 
-snippetRouter.get("/:id", asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const { id } = idParamSchema.parse(req.params);
+snippetRouter.get(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const { id } = idParamSchema.parse(req.params);
 
-  const snippet = await getSnippetForUser(userId, id);
-  if (!snippet) {
-    throw new AppError("Snippet not found.", 404);
-  }
+    const snippet = await getSnippetForUser(userId, id);
+    if (!snippet) {
+      throw new AppError("Snippet not found.", 404);
+    }
 
-  res.json({ data: snippet });
-}));
+    res.json({ data: snippet });
+  }),
+);
 
-snippetRouter.post("/", asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const input = snippetInputSchema.parse(req.body);
-  const snippet = await createSnippet(userId, input);
-  res.status(201).json({ data: snippet });
-}));
+snippetRouter.post(
+  "/",
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const input = snippetInputSchema.parse(req.body);
+    const snippet = await createSnippet(userId, input);
+    res.status(201).json({ data: snippet });
+  }),
+);
 
-snippetRouter.put("/:id", asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const { id } = idParamSchema.parse(req.params);
-  const input = snippetInputSchema.parse(req.body);
+snippetRouter.put(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const { id } = idParamSchema.parse(req.params);
+    const input = snippetInputSchema.parse(req.body);
 
-  const snippet = await updateSnippet(userId, id, input);
-  if (!snippet) {
-    throw new AppError("Snippet not found.", 404);
-  }
+    const snippet = await updateSnippet(userId, id, input);
+    if (!snippet) {
+      throw new AppError("Snippet not found.", 404);
+    }
 
-  res.json({ data: snippet });
-}));
+    res.json({ data: snippet });
+  }),
+);
 
-snippetRouter.delete("/:id", asyncHandler(async (req, res) => {
-  const userId = req.user!.id;
-  const { id } = idParamSchema.parse(req.params);
+snippetRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const userId = req.user!.id;
+    const { id } = idParamSchema.parse(req.params);
 
-  const snippet = await deleteSnippet(userId, id);
-  if (!snippet) {
-    throw new AppError("Snippet not found.", 404);
-  }
+    const snippet = await deleteSnippet(userId, id);
+    if (!snippet) {
+      throw new AppError("Snippet not found.", 404);
+    }
 
-  res.status(204).send();
-}));
+    res.status(204).send();
+  }),
+);

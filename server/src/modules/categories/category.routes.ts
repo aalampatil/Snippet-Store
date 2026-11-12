@@ -15,26 +15,35 @@ const createCategorySchema = z.object({
   color: nullableTrimmedString(20),
 });
 
-categoryRouter.get("/", asyncHandler(async (req, res) => {
-  const categories = await listCategories(req.user!.id);
-  res.json({ data: categories });
-}));
+categoryRouter.get(
+  "/",
+  asyncHandler(async (req, res) => {
+    const categories = await listCategories(req.user!.id);
+    res.json({ data: categories });
+  }),
+);
 
-categoryRouter.post("/", asyncHandler(async (req, res) => {
-  const input = createCategorySchema.parse(req.body);
+categoryRouter.post(
+  "/",
+  asyncHandler(async (req, res) => {
+    const input = createCategorySchema.parse(req.body);
 
-  const category = await createCategory(req.user!.id, input);
-  if (!category) throw new AppError("A category with that name already exists.", 409);
-  res.status(201).json({ data: category });
-}));
+    const category = await createCategory(req.user!.id, input);
+    if (!category) throw new AppError("A category with that name already exists.", 409);
+    res.status(201).json({ data: category });
+  }),
+);
 
-categoryRouter.delete("/:id", asyncHandler(async (req, res) => {
-  const { id } = idParamSchema.parse(req.params);
+categoryRouter.delete(
+  "/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = idParamSchema.parse(req.params);
 
-  const category = await deleteCategory(req.user!.id, id);
-  if (!category) {
-    throw new AppError("Category not found.", 404);
-  }
+    const category = await deleteCategory(req.user!.id, id);
+    if (!category) {
+      throw new AppError("Category not found.", 404);
+    }
 
-  res.status(204).send();
-}));
+    res.status(204).send();
+  }),
+);

@@ -1,4 +1,4 @@
-import { api } from "../../config/axiosApi";
+import { api } from "@/services/api";
 import type { Category, CategoryPayload, Snippet, SnippetPayload } from "@/types/snippet";
 
 type ApiResponse<T> = {

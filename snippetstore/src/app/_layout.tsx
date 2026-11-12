@@ -30,13 +30,28 @@ function RootStack() {
     }
   }, [colors.background, mode]);
 
-  if (loading) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-    <ActivityIndicator color={colors.accent} />
-  </View>;
+  if (loading)
+    return (
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.background,
+        }}
+      >
+        <ActivityIndicator color={colors.accent} />
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar hidden={false} style={mode === "dark" ? "light" : "dark"} backgroundColor="transparent" translucent />
+      <StatusBar
+        hidden={false}
+        style={mode === "dark" ? "light" : "dark"}
+        backgroundColor="transparent"
+        translucent
+      />
       <Stack
         screenOptions={{
           headerShown: false,

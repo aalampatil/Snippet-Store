@@ -30,19 +30,28 @@ const defaultCategories: NewCategory[] = [
   },
 ];
 
-export async function seedDefaultCategories(userId: number, executor: Pick<typeof db, "insert"> = db) {
-  await executor.insert(categories).values(defaultCategories.map((category) => ({ ...category, userId }))).onConflictDoNothing();
+export async function seedDefaultCategories(
+  userId: number,
+  executor: Pick<typeof db, "insert"> = db,
+) {
+  await executor
+    .insert(categories)
+    .values(defaultCategories.map((category) => ({ ...category, userId })))
+    .onConflictDoNothing();
 }
 
 export async function listCategories(userId: number) {
   return db.select().from(categories).where(eq(categories.userId, userId)).orderBy(categories.name);
 }
 
-export async function createCategory(userId: number, input: {
-  name: string;
-  description?: string | null;
-  color?: string | null;
-}) {
+export async function createCategory(
+  userId: number,
+  input: {
+    name: string;
+    description?: string | null;
+    color?: string | null;
+  },
+) {
   const slug = slugify(input.name);
   const [category] = await db
     .insert(categories)
@@ -60,6 +69,9 @@ export async function createCategory(userId: number, input: {
 }
 
 export async function deleteCategory(userId: number, id: number) {
-  const [category] = await db.delete(categories).where(and(eq(categories.id, id), eq(categories.userId, userId))).returning();
+  const [category] = await db
+    .delete(categories)
+    .where(and(eq(categories.id, id), eq(categories.userId, userId)))
+    .returning();
   return category;
 }

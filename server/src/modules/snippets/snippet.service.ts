@@ -112,10 +112,7 @@ export async function getSnippetForUser(userId: number, id: number) {
 
 export async function createSnippet(userId: number, input: SnippetInput) {
   await validateCategory(userId, input.categoryId);
-  const [snippet] = await db
-    .insert(snippets)
-    .values(toSnippetValues(userId, input))
-    .returning();
+  const [snippet] = await db.insert(snippets).values(toSnippetValues(userId, input)).returning();
 
   if (!snippet) {
     throw new Error("Snippet could not be created.");
@@ -157,7 +154,10 @@ function toSnippetValues(userId: number, input: SnippetInput): NewSnippet {
 
 async function validateCategory(userId: number, categoryId?: number | null) {
   if (categoryId == null) return;
-  const [category] = await db.select({ id: categories.id }).from(categories)
-    .where(and(eq(categories.id, categoryId), eq(categories.userId, userId))).limit(1);
+  const [category] = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(and(eq(categories.id, categoryId), eq(categories.userId, userId)))
+    .limit(1);
   if (!category) throw new AppError("Category not found.", 400);
 }

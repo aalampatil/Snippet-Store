@@ -16,14 +16,34 @@ export function createApp() {
   app.disable("x-powered-by");
   app.set("trust proxy", env.trustProxyHops);
   app.use(helmet({ referrerPolicy: { policy: "no-referrer" } }));
-  app.use(cors({ origin: env.corsOrigins, credentials: true, allowedHeaders: ["Content-Type", "Authorization", "X-Client-Platform"] }));
-  app.get("/health", (_req, res) => { res.json({ status: "ok" }); });
-  app.get("/ready", async (_req, res) => {
-    try { await db.execute(sql`select 1`); res.json({ status: "ready" }); }
-    catch { res.status(503).json({ status: "unavailable" }); }
+  app.use(
+    cors({
+      origin: env.corsOrigins,
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization", "X-Client-Platform"],
+    }),
+  );
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok" });
   });
-  app.use("/api", rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: "draft-8", legacyHeaders: false,
-    message: { message: "Too many requests. Please try again in a minute." } }));
+  app.get("/ready", async (_req, res) => {
+    try {
+      await db.execute(sql`select 1`);
+      res.json({ status: "ready" });
+    } catch {
+      res.status(503).json({ status: "unavailable" });
+    }
+  });
+  app.use(
+    "/api",
+    rateLimit({
+      windowMs: 60 * 1000,
+      limit: 120,
+      standardHeaders: "draft-8",
+      legacyHeaders: false,
+      message: { message: "Too many requests. Please try again in a minute." },
+    }),
+  );
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: false, limit: "16kb" }));
   app.use(cookieParser());
@@ -31,13 +51,20 @@ export function createApp() {
     // Reject cross-origin browser writes, including login CSRF and cookie-authenticated requests.
     const origin = req.header("origin");
     const safeMethod = ["GET", "HEAD", "OPTIONS"].includes(req.method);
-    const allowed = origin && [new URL(env.publicApiUrl).origin, ...env.corsOrigins].includes(origin);
-    if ((!safeMethod && origin && !allowed) || (!safeMethod && req.header("sec-fetch-site") === "cross-site" && !allowed)) {
-      res.status(403).json({ message: "This origin is not allowed." }); return;
+    const allowed =
+      origin && [new URL(env.publicApiUrl).origin, ...env.corsOrigins].includes(origin);
+    if (
+      (!safeMethod && origin && !allowed) ||
+      (!safeMethod && req.header("sec-fetch-site") === "cross-site" && !allowed)
+    ) {
+      res.status(403).json({ message: "This origin is not allowed." });
+      return;
     }
     next();
   });
-  app.get("/", (_req, res) => { res.json({ name: "Snippet Store" }); });
+  app.get("/", (_req, res) => {
+    res.json({ name: "Snippet Store" });
+  });
   app.use("/api/auth", authRouter);
   app.use("/api/categories", categoryRouter);
   app.use("/api/snippets", snippetRouter);

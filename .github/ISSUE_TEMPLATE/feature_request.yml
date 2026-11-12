@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an improvement to Snippet Store.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues before submitting. Describe the user need and
+        avoid including private snippets or account information.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain who needs this and give a concrete example.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed behavior
+      description: Describe how the feature should work from the user's perspective.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe existing workarounds or other solutions you considered.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include affected platforms, sketches, or accessibility needs if relevant.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for this suggestion.
+          required: true

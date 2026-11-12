@@ -1,6 +1,8 @@
 # Snippet Store
 
-An Expo app for Android and iOS with an Express + PostgreSQL API.
+A personal code snippet manager for Android and iOS, built with Expo, React Native,
+TypeScript, Express, and PostgreSQL. Save, search, and organize private snippets by
+category across your devices.
 
 - Email/password signup with email verification, sign-in, and password recovery.
 - Private snippets and categories scoped to each account.
@@ -134,3 +136,18 @@ Follow [production guide](docs/production.md) for Render configuration, required
 Production deployment, external email delivery, signed device builds, and store submissions require your accounts and configuration. Local tests and exported bundles do not replace those checks.
 
 See [verification notes](docs/verification.md) for the completed checks and remaining dependency advisories.
+
+## Community
+
+Contributions to the app, API, documentation, and accessibility are welcome. Read
+the [contributing guidelines](CONTRIBUTING.md) for setup, testing, and the pull
+request process. All participants must follow the [code of conduct](CODE_OF_CONDUCT.md).
+
+- [Report a bug or request a feature](https://github.com/aalampatil/Snippet-Store/issues/new/choose).
+- [Report a security vulnerability privately](SECURITY.md).
+- For setup and usage questions, read this README and the [production guide](docs/production.md),
+  then open an issue with your environment and a sanitized description of the problem.
+
+## License
+
+Snippet Store is available under the [ISC License](LICENSE).

@@ -1,6 +1,5 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { ZodError } from "zod";
-import { env } from "../config/env.js";
 
 export class AppError extends Error {
   constructor(

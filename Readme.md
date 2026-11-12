@@ -1,375 +1,136 @@
 # Snippet Store
 
-A personal snippet manager for code, commands, project configuration, and technical notes.
+An Expo app for Android and iOS with an Express + PostgreSQL API.
 
-The project is split into two apps:
+- Email/password signup with email verification, sign-in, and password recovery.
+- Private snippets and categories scoped to each account.
+- Revocable seven-day sessions; native tokens stored with Expo SecureStore.
+- In-app and browser account deletion.
+- Search, categories, editing, clipboard, sharing, and dark/light themes.
+- Render deployment configuration and CI checks.
 
-- `server`: Express + Drizzle + PostgreSQL API
-- `snippetstore`: Expo Router mobile app
+There is no Google sign-in integration.
 
-There is no authentication by design. This is intended for private/local use or deployment behind a private network/VPN/reverse proxy.
-
-## Features
-
-- Store code snippets, command snippets, config blocks, and notes.
-- Assign snippets to categories.
-- Add a title, note, language, project name, and snippet body.
-- Search snippets by title, note, content, language, and project.
-- Filter snippets by category.
-- Create, edit, delete, share, and copy snippets.
-- Dark/light theme toggle with persisted preference.
-- Minimal UI with the configured dark/electric-lime palette.
-
-## Tech Stack
-
-Backend:
-
-- Node.js
-- Express
-- PostgreSQL
-- Drizzle ORM
-- Zod validation
-- Docker Compose for local Postgres
-
-Frontend:
-
-- Expo
-- React Native
-- Expo Router file-based navigation
-- Axios
-- AsyncStorage
-- Expo Clipboard
-
-## Project Structure
+## Source layout
 
 ```text
-.
-├── server
-│   ├── drizzle
-│   ├── src
-│   │   ├── config
-│   │   ├── db
-│   │   ├── middlewares
-│   │   ├── modules
-│   │   │   ├── categories
-│   │   │   └── snippets
-│   │   └── utils
-│   ├── docker-compose.yaml
-│   └── package.json
-└── snippetstore
-    ├── config
-    ├── src
-    │   ├── app
-    │   ├── components
-    │   ├── constants
-    │   ├── contexts
-    │   ├── screens
-    │   ├── services
-    │   ├── types
-    │   └── utils
-    └── package.json
+server/
+  src/app.ts                  Express app and middleware composition
+  src/index.ts                Server lifecycle and cleanup
+  src/config/                 Validated environment configuration
+  src/db/                     PostgreSQL connection and Drizzle schema
+  src/middlewares/            Authentication, errors, async handlers
+  src/modules/auth/           API routes, browser pages, schemas, limits, services
+  src/modules/categories/     Account-scoped category routes and service
+  src/modules/snippets/       Account-scoped snippet routes and service
+  src/utils/                  Shared validation utilities
+  drizzle/                    Versioned SQL migrations and generated metadata
+  test/                       Database integration and configuration tests
+snippetstore/
+  src/app/                    Expo route entry points and root layout
+  src/screens/                Screen UI
+  src/components/             Reusable UI and shared authentication form
+  src/contexts/               Authentication and theme state
+  src/services/               API client, secure session storage, data requests
+  src/types/                  Shared domain types
+  src/utils/                  Error handling and route helpers
+  patches/                    Versioned dependency compatibility patches
+  test/                       Dependency security regression tests
+docs/                         Deployment and verification notes
+render.yaml                   Render production infrastructure
+.github/workflows/            CI checks
 ```
 
-## Requirements
+## Develop locally
 
-- Node.js
-- npm
-- Docker Desktop
-- Expo CLI through `npx expo`
-- Android emulator, iOS simulator, Expo Go, or a development build
+Use Node.js 22.12 or later and Docker Desktop.
 
-## Environment Variables
-
-Backend env file:
-
-Create `server/.env` from `server/.env.example`.
-
-```env
-PORT=3000
-NODE_ENV=development
-DATABASE_URL=postgresql://ADMIN:ADMIN@localhost:5432/snippetstore
-CORS_ORIGIN=*
-```
-
-Frontend env file:
-
-Create `snippetstore/.env` from `snippetstore/.env.example`.
-
-```env
-EXPO_PUBLIC_API_URL=http://localhost:3000
-```
-
-Use your computer LAN IP instead of `localhost` when testing on a physical phone:
-
-```env
-EXPO_PUBLIC_API_URL=http://192.168.x.x:3000
-```
-
-## Local Development
-
-Install backend dependencies:
+1. Copy `server/.env.example` to `server/.env`. Keep `CORS_ORIGIN=` empty for native apps. Local verification can be disabled with `REQUIRE_EMAIL_VERIFICATION=false`.
+2. Copy `snippetstore/.env.example` to `snippetstore/.env`. Set `EXPO_PUBLIC_API_URL` to your computer's LAN URL for physical devices.
+3. Start the database and API:
 
 ```powershell
 cd server
-npm install
-```
-
-Install frontend dependencies:
-
-```powershell
-cd snippetstore
-npm install
-```
-
-Start Postgres:
-
-```powershell
-cd server
+npm ci
 docker compose up -d
-```
-
-If the Docker volume exists but the database does not, create it once:
-
-```powershell
-docker compose exec postgres createdb -U ADMIN snippetstore
-```
-
-Apply migrations:
-
-```powershell
 npm run db:migrate
-```
-
-Start the backend:
-
-```powershell
 npm run dev
 ```
 
-Start the Expo app in another terminal:
+4. Start Expo in another terminal:
 
 ```powershell
 cd snippetstore
-npm run start
+npm ci
+npm start
 ```
 
-If native config or env values are not updating, restart Expo with cache clear:
+SecureStore adds native code. Rebuild a development client after this change. For browser development, add the exact Expo origin (for example `http://localhost:8081`) to `CORS_ORIGIN` and use the same hostname for app and API.
+
+To test verification/recovery locally, configure SMTP and set `REQUIRE_EMAIL_VERIFICATION=true`. `PUBLIC_API_URL` must be reachable by the browser opening the email.
+
+## Verify
+
+API, from `server`:
 
 ```powershell
-npm run start -- --clear
-```
-
-## Backend Scripts
-
-Run from `server`.
-
-```powershell
-npm run dev
 npm run build
-npm run start
-npm run db:generate
-npm run db:migrate
-npm run db:studio
+# Use a dedicated test database, never your application database.
+$env:TEST_DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/snippetstore_test"
+npm test
+npm audit --omit=dev --audit-level=high
 ```
 
-## Frontend Scripts
+The integration suite applies migrations, sends email through a local test SMTP receiver, and checks verification, recovery, revocation, authorization, isolation, deletion, and rate limits. The test database name must end in `_test`.
 
-Run from `snippetstore`.
+App, from `snippetstore`:
 
 ```powershell
-npm run start
-npm run android
-npm run ios
-npm run web
+npx expo customize tsconfig.json
 npx tsc --noEmit
+npm run test:dependencies
+npx expo install --check
+npx expo export --platform android --platform ios
 ```
 
-## Database Schema
-
-Categories:
-
-- `id`
-- `name`
-- `slug`
-- `description`
-- `color`
-- `createdAt`
-- `updatedAt`
-
-Snippets:
-
-- `id`
-- `title`
-- `note`
-- `content`
-- `language`
-- `project`
-- `categoryId`
-- `createdAt`
-- `updatedAt`
-
-Default categories are seeded on backend startup when the categories table is empty:
-
-- Code Snippet
-- Command Snippet
-- Config
-- Note
+The URL-decoder dependency override and one-line CommonJS compatibility patch are intentional. `npm ci` applies the patch automatically; `test:dependencies` checks normal route queries and malformed encoding. Do not remove it until Expo Router includes the upstream decoder fix.
 
 ## API
 
-Base URL:
+Public:
 
-```text
-http://localhost:3000
-```
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Process health |
+| `GET /ready` | Database readiness |
+| `POST /api/auth/register` | Create account; production returns 202 pending email verification |
+| `POST /api/auth/login` | Sign in |
+| `POST /api/auth/logout` | Revoke the current session |
+| `POST /api/auth/forgot-password` | Request a password-reset email |
+| `POST /api/auth/resend-verification` | Request a verification email |
+| `GET/POST /api/auth/verify` | Browser confirmation page |
+| `GET/POST /api/auth/reset` | Browser password-reset page |
+| `GET/POST /api/auth/delete-account` | Browser account deletion with password confirmation |
 
-Health:
+Authenticated:
 
-```text
-GET /health
-```
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/auth/me` | Current user |
+| `DELETE /api/auth/account` | Delete account; body: `{ "password": "..." }` |
+| `GET/POST /api/categories` | List/create own categories |
+| `DELETE /api/categories/:id` | Delete own category |
+| `GET/POST /api/snippets` | List/create own snippets |
+| `GET/PUT/DELETE /api/snippets/:id` | Read/update/delete own snippet |
 
-Categories:
+Native clients send `X-Client-Platform: native` on login and use `Authorization: Bearer <token>`. Browsers receive an HttpOnly cookie; credentials are never stored in browser local storage.
 
-```text
-GET    /api/categories
-POST   /api/categories
-DELETE /api/categories/:id
-```
+New passwords require 15–128 characters. Existing bcrypt passwords remain usable and are rehashed with scrypt on successful login.
 
-Create category body:
+## Production
 
-```json
-{
-  "name": "API",
-  "description": "Request examples and API notes",
-  "color": "#d4ff00"
-}
-```
+Follow [production guide](docs/production.md) for Render configuration, required secrets, database migration precautions, Expo builds, and launch checks.
 
-Snippets:
+Production deployment, external email delivery, signed device builds, and store submissions require your accounts and configuration. Local tests and exported bundles do not replace those checks.
 
-```text
-GET    /api/snippets
-GET    /api/snippets/:id
-POST   /api/snippets
-PUT    /api/snippets/:id
-DELETE /api/snippets/:id
-```
-
-List snippets query params:
-
-```text
-search=postgres
-categoryId=1
-page=1
-limit=30
-```
-
-Create/update snippet body:
-
-```json
-{
-  "title": "Postgres Docker",
-  "note": "Local database container",
-  "content": "docker compose up -d",
-  "language": "bash",
-  "project": "Snippet Store",
-  "categoryId": 2
-}
-```
-
-List response shape:
-
-```json
-{
-  "data": [],
-  "meta": {
-    "page": 1,
-    "limit": 30,
-    "total": 0
-  }
-}
-```
-
-## Production Notes
-
-Backend:
-
-- Set `NODE_ENV=production`.
-- Set a production `DATABASE_URL`.
-- Set `CORS_ORIGIN` to the frontend origin instead of `*` if exposing the API.
-- Run `npm run build`.
-- Run migrations before starting the server.
-- Start with `npm run start`.
-- Do not expose this unauthenticated API publicly unless it is protected by a private network, VPN, firewall, or reverse proxy auth.
-
-Frontend:
-
-- Set `EXPO_PUBLIC_API_URL` to the deployed API URL before building.
-- For reliable Android edge-to-edge behavior, use a development build or production build. Expo Go can differ because some native config is controlled by Expo Go itself.
-- Test on the actual device you plan to use.
-
-## Verification
-
-Backend:
-
-```powershell
-cd server
-npm run build
-npm run db:migrate
-```
-
-Frontend:
-
-```powershell
-cd snippetstore
-npx tsc --noEmit
-npx expo config --type public
-```
-
-Dependency audit:
-
-```powershell
-cd server
-npm audit --audit-level=moderate
-
-cd ../snippetstore
-npm audit --audit-level=moderate
-```
-
-Current audit note: npm reports moderate advisories in development tooling dependency chains. The suggested automatic fix requires `npm audit fix --force` and would install breaking/downgraded tooling versions, so it should not be applied blindly. Re-check after Expo and Drizzle release compatible patched dependency trees.
-
-Manual API check:
-
-```powershell
-Invoke-RestMethod http://localhost:3000/health
-Invoke-RestMethod http://localhost:3000/api/categories
-Invoke-RestMethod http://localhost:3000/api/snippets
-```
-
-## Troubleshooting
-
-Docker is running but migration says the database does not exist:
-
-```powershell
-cd server
-docker compose exec postgres createdb -U ADMIN snippetstore
-npm run db:migrate
-```
-
-Phone cannot reach the backend:
-
-- Make sure the phone and computer are on the same network.
-- Use the computer LAN IP in `EXPO_PUBLIC_API_URL`.
-- Make sure Windows firewall allows port `3000`.
-- Confirm the backend is listening with `http://localhost:3000/health`.
-
-Theme/status bar changes do not show immediately:
-
-```powershell
-cd snippetstore
-npm run start -- --clear
-```
-
-Then fully close and reopen the app on the device.
+See [verification notes](docs/verification.md) for the completed checks and remaining dependency advisories.

@@ -1,0 +1,53 @@
+# New production stack. Review the paid compute plans before applying.
+# Keep the API and database in the same region. Change both before first creation if desired.
+services:
+  - type: web
+    name: snippetstore-api
+    runtime: node
+    region: singapore
+    plan: 0.5c-512mb
+    numInstances: 1
+    rootDir: server
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run db:migrate
+    startCommand: npm start
+    healthCheckPath: /ready
+    autoDeployTrigger: "off"
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: snippetstore-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        value: ""
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: REQUIRE_EMAIL_VERIFICATION
+        value: "true"
+      - key: SESSION_DAYS
+        value: "7"
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+
+databases:
+  - name: snippetstore-db
+    region: singapore
+    plan: 0.1c-256mb
+    postgresMajorVersion: "17"
+    databaseName: snippetstore
+    user: snippetstore
+    diskSizeGB: 1
+    ipAllowList: []

@@ -31,14 +31,6 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
   const [loading, setLoading] = useState(Boolean(snippetId));
   const [saving, setSaving] = useState(false);
 
-  if (authLoading || !user) {
-    return (
-      <Screen style={styles.center}>
-        <ActivityIndicator color={colors.accent} />
-      </Screen>
-    );
-  }
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -64,8 +56,10 @@ export function SnippetFormScreen({ snippetId }: SnippetFormScreenProps) {
   }, [snippetId]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (!authLoading && user) void loadData();
+  }, [loadData, authLoading, user]);
+
+  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
 
   const save = async () => {
     const payload: SnippetPayload = {

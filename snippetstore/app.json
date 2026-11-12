@@ -13,6 +13,7 @@
       "translucent": true
     },
     "ios": {
+      "bundleIdentifier": "com.aalampatil.snippetstore",
       "icon": "./assets/expo.icon"
     },
     "android": {
@@ -39,7 +40,8 @@
             "imageWidth": 76
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,

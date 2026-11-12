@@ -13,6 +13,8 @@ export function AppButton({ title, tone = "primary", disabled, style, ...props }
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       {...props}
       disabled={disabled}
       style={(state) => [

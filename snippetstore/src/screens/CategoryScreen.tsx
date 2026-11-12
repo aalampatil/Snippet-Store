@@ -20,14 +20,6 @@ export function CategoryScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  if (authLoading || !user) {
-    return (
-      <Screen style={styles.center}>
-        <ActivityIndicator color={colors.accent} />
-      </Screen>
-    );
-  }
-
   const loadCategories = async () => {
     try {
       setLoading(true);
@@ -40,8 +32,10 @@ export function CategoryScreen() {
   };
 
   useEffect(() => {
-    loadCategories();
-  }, []);
+    if (!authLoading && user) void loadCategories();
+  }, [authLoading, user]);
+
+  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
 
   const addCategory = async () => {
     if (!name.trim()) {

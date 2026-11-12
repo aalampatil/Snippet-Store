@@ -23,14 +23,6 @@ export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [loading, setLoading] = useState(true);
 
-  if (authLoading || !user) {
-    return (
-      <Screen style={styles.center}>
-        <ActivityIndicator color={colors.accent} />
-      </Screen>
-    );
-  }
-
   const loadSnippet = useCallback(async () => {
     try {
       setLoading(true);
@@ -44,9 +36,11 @@ export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
 
   useFocusEffect(
     useCallback(() => {
-      loadSnippet();
-    }, [loadSnippet]),
+      if (!authLoading && user) void loadSnippet();
+    }, [loadSnippet, authLoading, user]),
   );
+
+  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
 
   const remove = () => {
     Alert.alert("Delete snippet?", "This cannot be undone.", [

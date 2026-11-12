@@ -14,6 +14,7 @@ export function AppTextInput({ label, style, multiline, ...props }: AppTextInput
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
+        accessibilityLabel={label}
         {...props}
         multiline={multiline}
         placeholderTextColor={colors.muted}

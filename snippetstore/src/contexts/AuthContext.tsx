@@ -1,127 +1,125 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api } from "../../config/axiosApi";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { Alert, Platform } from "react-native";
+import { isAxiosError } from "axios";
+import { api, setUnauthorizedHandler } from "../../config/axiosApi";
+import { readSession, writeSession } from "@/services/authStorage";
 import { getErrorMessage } from "@/utils/errors";
 
-type AuthUser = {
-  id: number;
-  email: string;
-};
-
+type AuthUser = { id: number; email: string };
+type AuthResult = { token?: string; user: AuthUser } | { requiresVerification: true; message: string };
 type AuthContextValue = {
-  user: AuthUser | null;
-  token: string | null;
-  loading: boolean;
-  error: string | null;
+  user: AuthUser | null; loading: boolean; submitting: boolean; error: string | null; message: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  requestEmail: (email: string, purpose: "reset" | "verify") => Promise<void>;
+  deleteAccount: (password: string) => Promise<boolean>;
   clearError: () => void;
 };
-
-const AUTH_TOKEN_KEY = "auth_token";
-
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const busy = useRef(false);
+  const generation = useRef(0);
+  const clearError = useCallback(() => { setError(null); setMessage(null); }, []);
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    let restoring = true;
+    let hadSavedSession = false;
+    setUnauthorizedHandler(() => {
+      generation.current++;
+      setUser(null);
+      setError(!restoring || hadSavedSession ? "Your session has expired. Please sign in again." : null);
+      void writeSession(null).catch(() => setError("Could not clear saved credentials. Please restart the app."));
+    });
+    void (async () => {
       try {
-        const stored = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-        if (!active) return;
-        setToken(stored);
-        if (stored) {
-          const me = await api.get<{ data: AuthUser }>("/api/auth/me", {
-            headers: { Authorization: `Bearer ${stored}` },
-          });
-          if (!active) return;
-          setUser(me.data.data);
-        }
-      } catch {
-        // token is invalid/expired or request failed; treat as logged out
-        await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-        if (!active) return;
-        setToken(null);
-        setUser(null);
-      } finally {
-        if (active) setLoading(false);
-      }
+        const token = await readSession();
+        hadSavedSession = !!token;
+        if (!active || (Platform.OS !== "web" && !token)) return;
+        const version = generation.current;
+        const response = await api.get<{ data: AuthUser }>("/api/auth/me");
+        if (active && generation.current === version) setUser(response.data.data);
+      } catch (err) {
+        // A network outage must not destroy a valid saved session.
+        if (active && !(isAxiosError(err) && err.response?.status === 401)) setError(getErrorMessage(err));
+      } finally { restoring = false; if (active) setLoading(false); }
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; setUnauthorizedHandler(); };
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const authenticate = useCallback(async (path: "login" | "register", email: string, password: string) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSubmitting(true); setError(null); setMessage(null);
     try {
+      const response = await api.post<{ data: AuthResult }>(`/api/auth/${path}`, { email: email.trim(), password });
+      const result = response.data.data;
+      if ("requiresVerification" in result) { setMessage(result.message); return; }
+      try { await writeSession(result.token ?? null); }
+      catch (storageError) {
+        // A session that cannot be saved must be revoked rather than left active.
+        await api.post("/api/auth/logout", {}, { headers: result.token ? { Authorization: `Bearer ${result.token}` } : {} }).catch(() => {});
+        throw storageError;
+      }
+      generation.current++;
       setError(null);
-      setLoading(true);
-      const res = await api.post<{ data: { token: string; user: AuthUser } }>("/api/auth/login", { email, password });
-      const nextToken = res.data.data.token;
-      const nextUser = res.data.data.user;
-      await AsyncStorage.setItem(AUTH_TOKEN_KEY, nextToken);
-      setToken(nextToken);
-      setUser(nextUser);
-      router.replace("/");
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+      setUser(result.user);
+    } catch (err) { setError(getErrorMessage(err)); }
+    finally { busy.current = false; setSubmitting(false); }
+  }, []);
 
-  const register = async (email: string, password: string) => {
+  const requestEmail = useCallback(async (email: string, purpose: "reset" | "verify") => {
+    if (busy.current) return;
+    busy.current = true; setSubmitting(true); setError(null); setMessage(null);
     try {
-      setError(null);
-      setLoading(true);
-      const res = await api.post<{ data: { token: string; user: AuthUser } }>("/api/auth/register", { email, password });
-      const nextToken = res.data.data.token;
-      const nextUser = res.data.data.user;
-      await AsyncStorage.setItem(AUTH_TOKEN_KEY, nextToken);
-      setToken(nextToken);
-      setUser(nextUser);
-      router.replace("/");
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
+      const response = await api.post<{ data: { message: string } }>(
+        purpose === "reset" ? "/api/auth/forgot-password" : "/api/auth/resend-verification", { email: email.trim() });
+      setMessage(response.data.data.message);
+    } catch (err) { setError(getErrorMessage(err)); }
+    finally { busy.current = false; setSubmitting(false); }
+  }, []);
 
-  const logout = async () => {
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
-    setToken(null);
-    setUser(null);
-    router.replace("/login" as any);
-  };
+  const logout = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true; setSubmitting(true);
+    try {
+      await api.post("/api/auth/logout");
+      await writeSession(null);
+      generation.current++;
+      setUser(null); setError(null); setMessage(null);
+    } catch (err) { Alert.alert("Could not sign out", getErrorMessage(err)); }
+    finally { busy.current = false; setSubmitting(false); }
+  }, []);
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      token,
-      loading,
-      error,
-      login,
-      register,
-      logout,
-      clearError: () => setError(null),
-    }),
-    [user, token, loading, error],
-  );
+  const deleteAccount = useCallback(async (password: string) => {
+    if (busy.current) return false;
+    busy.current = true; setSubmitting(true); setError(null);
+    try {
+      await api.delete("/api/auth/account", { data: { password } });
+      generation.current++;
+      setUser(null);
+      await writeSession(null);
+      return true;
+    } catch (err) { setError(getErrorMessage(err)); return false; }
+    finally { busy.current = false; setSubmitting(false); }
+  }, []);
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{
+    user, loading, submitting, error, message,
+    login: (email, password) => authenticate("login", email, password),
+    register: (email, password) => authenticate("register", email, password),
+    requestEmail, logout, deleteAccount, clearError,
+  }}>{children}</AuthContext.Provider>;
 }
-
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
+  return context;
 }

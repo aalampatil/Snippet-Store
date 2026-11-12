@@ -1,10 +1,10 @@
 import { Stack } from "expo-router";
 import { useEffect } from "react";
-import { Platform, StatusBar as NativeStatusBar, View } from "react-native";
+import { ActivityIndicator, Platform, StatusBar as NativeStatusBar, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as SystemUI from "expo-system-ui";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
 export default function RootLayout() {
   return (
@@ -18,6 +18,7 @@ export default function RootLayout() {
 
 function RootStack() {
   const { colors, mode } = useTheme();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(colors.background);
@@ -28,6 +29,10 @@ function RootStack() {
       NativeStatusBar.setBarStyle(mode === "dark" ? "light-content" : "dark-content", true);
     }
   }, [colors.background, mode]);
+
+  if (loading) return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
+    <ActivityIndicator color={colors.accent} />
+  </View>;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -42,13 +47,19 @@ function RootStack() {
           contentStyle: { backgroundColor: colors.background },
         }}
       >
-        <Stack.Screen name="index" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="register" />
-        <Stack.Screen name="snippets/new" />
-        <Stack.Screen name="snippets/[id]" />
-        <Stack.Screen name="snippets/[id]/edit" />
-        <Stack.Screen name="categories/index" />
+        <Stack.Protected guard={!user}>
+          <Stack.Screen name="login" />
+          <Stack.Screen name="register" />
+          <Stack.Screen name="recovery" />
+        </Stack.Protected>
+        <Stack.Protected guard={!!user}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="account" />
+          <Stack.Screen name="snippets/new" />
+          <Stack.Screen name="snippets/[id]" />
+          <Stack.Screen name="snippets/[id]/edit" />
+          <Stack.Screen name="categories/index" />
+        </Stack.Protected>
       </Stack>
     </View>
   );

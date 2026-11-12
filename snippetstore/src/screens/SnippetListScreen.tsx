@@ -8,7 +8,6 @@ import { Screen } from "@/components/Screen";
 import { SnippetCard } from "@/components/SnippetCard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { spacing, type ThemeColors } from "@/constants/theme";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { fetchCategories, fetchSnippets } from "@/services/snippetApi";
 import type { Category, Snippet } from "@/types/snippet";
@@ -18,7 +17,6 @@ import { useRequireAuth } from "@/utils/useRequireAuth";
 export function SnippetListScreen() {
   const router = useRouter();
   const { user, loading: authLoading } = useRequireAuth();
-  const { logout } = useAuth();
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const [snippets, setSnippets] = useState<Snippet[]>([]);
@@ -29,18 +27,9 @@ export function SnippetListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (authLoading || !user) {
-    return (
-      <Screen>
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
-      </Screen>
-    );
-  }
-
   const loadData = useCallback(
     async (showLoader = false) => {
+      if (authLoading || !user) return;
       try {
         setError(null);
         if (showLoader) {
@@ -59,7 +48,7 @@ export function SnippetListScreen() {
         setRefreshing(false);
       }
     },
-    [search, selectedCategoryId],
+    [search, selectedCategoryId, authLoading, user],
   );
 
   useFocusEffect(
@@ -73,6 +62,8 @@ export function SnippetListScreen() {
     loadData();
   };
 
+  if (authLoading || !user) return <Screen><ActivityIndicator color={colors.accent} /></Screen>;
+
   return (
     <Screen>
       <View style={styles.header}>
@@ -81,7 +72,7 @@ export function SnippetListScreen() {
           <Text style={styles.title}>Personal code shelf</Text>
         </View>
         <ThemeToggle />
-        <AppButton title="Logout" tone="secondary" onPress={logout} />
+        <AppButton title="Account" tone="secondary" onPress={() => router.push("/account")} />
         <AppButton title="New" onPress={() => router.push("/snippets/new")} />
       </View>
 

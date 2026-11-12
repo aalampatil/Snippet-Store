@@ -105,3 +105,10 @@ export async function deleteAccount(userId: number, password: string) {
   if (!user || !await verifyPassword(password, user.passwordHash)) throw new AppError("Invalid password.", 401);
   await db.delete(users).where(eq(users.id, userId));
 }
+
+export async function deleteAccountWithCredentials(input: { email: string; password: string }) {
+  const [user] = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+  const ok = await verifyPassword(input.password, user?.passwordHash ?? await dummyHash);
+  if (!user || !ok) throw new AppError("Invalid email or password.", 401);
+  await db.delete(users).where(eq(users.id, user.id));
+}

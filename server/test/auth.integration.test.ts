@@ -116,7 +116,9 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
   await t.test("isolates users, categories, and snippet mutations", async () => {
     assert.equal((await request("/api/auth/register", "POST", { email: secondEmail, password })).status, 202);
     const [second] = await db.select().from(users).where(eq(users.email, secondEmail)); assert.ok(second); createdIds.push(second.id);
-    assert.equal((await request("/api/auth/verify", "POST", { token: emailToken("verify") })).status, 200);
+    const verified = await fetch(base + "/api/auth/verify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ token: emailToken("verify") }) });
+    assert.equal(verified.status, 200); await verified.text();
     secondToken = (await request("/api/auth/login", "POST", { email: secondEmail, password })).body.data.token;
     const firstCategories = (await request("/api/categories", "GET", undefined, token)).body.data;
     assert.equal(firstCategories.length, 4); categoryId = firstCategories[0].id;
@@ -161,6 +163,14 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
     assert.equal((await db.select().from(categories).where(eq(categories.userId, userId))).length, 0);
     assert.equal((await db.select().from(sessions).where(eq(sessions.userId, userId))).length, 0);
     assert.equal((await db.select().from(authTokens).where(eq(authTokens.userId, userId))).length, 0);
+  });
+  await t.test("provides a browser account-deletion flow with password confirmation", async () => {
+    assert.equal((await request("/api/auth/delete-account")).status, 200);
+    assert.equal((await request("/api/auth/delete-account", "POST", { email: secondEmail, password })).status, 400);
+    const deleted = await fetch(base + "/api/auth/delete-account", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ email: secondEmail, password, confirm: "delete" }) });
+    assert.equal(deleted.status, 200); assert.match(await deleted.text(), /Account deleted/);
+    assert.equal((await db.select().from(users).where(eq(users.email, secondEmail))).length, 0);
   });
   await t.test("rate limits repeated authentication attempts", async () => {
     let status = 0;

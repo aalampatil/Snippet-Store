@@ -4,7 +4,7 @@ import { z } from "zod";
 import { env } from "../../config/env.js";
 import { asyncHandler } from "../../middlewares/async-handler.js";
 import { cookieOptions, requestToken, requireAuth, sessionCookie } from "../../middlewares/auth.js";
-import { consumeAuthToken, deleteAccount, getUserById, loginUser, registerUser, requestAuthEmail, revokeSession } from "./auth.service.js";
+import { consumeAuthToken, deleteAccount, deleteAccountWithCredentials, getUserById, loginUser, registerUser, requestAuthEmail, revokeSession } from "./auth.service.js";
 
 export const authRouter = Router();
 authRouter.use((_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
@@ -62,6 +62,15 @@ authRouter.delete("/account", requireAuth, authLimit, asyncHandler(async (req, r
 function page(title: string, body: string) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title} · Snippet Store</title></head><body><main><h1>${title}</h1>${body}</main></body></html>`;
 }
+authRouter.get("/delete-account", (_req, res) => {
+  res.type("html").send(page("Delete your Snippet Store account", '<p>This permanently deletes your account, snippets, categories, and active sessions. Database backups follow the hosting backup retention period.</p><form method="post" action="/api/auth/delete-account"><p><label>Email <input name="email" type="email" autocomplete="email" maxlength="255" required></label></p><p><label>Password <input name="password" type="password" autocomplete="current-password" maxlength="200" required></label></p><p><label><input type="checkbox" name="confirm" value="delete" required> I understand this permanently deletes my account and data.</label></p><button type="submit">Permanently delete account</button></form>'));
+});
+authRouter.post("/delete-account", authLimit, asyncHandler(async (req, res) => {
+  const input = loginSchema.extend({ confirm: z.literal("delete") }).parse(req.body);
+  await deleteAccountWithCredentials(input);
+  res.clearCookie(sessionCookie, cookieOptions);
+  res.type("html").send(page("Account deleted", "<p>Your account and its data have been deleted.</p>"));
+}));
 // Render's HTTPS URL hosts these pages; a custom domain or installed app is not required.
 for (const purpose of ["verify", "reset"] as const) {
   authRouter.get(`/${purpose}`, authLimit, (req, res) => {

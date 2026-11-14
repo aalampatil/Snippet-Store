@@ -124,7 +124,7 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
   const suffix = Date.now();
   const email = `one-${suffix}@example.com`;
   const secondEmail = `two-${suffix}@example.com`;
-  const password = "a very strong password 123";
+  const password = "Pass123!";
   let token = "";
   let secondToken = "";
   let userId = 0;
@@ -145,7 +145,7 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
   });
   await t.test("validates passwords and sends verification through SMTP", async () => {
     assert.equal(
-      (await request("/api/auth/register", "POST", { email, password: "short" })).status,
+      (await request("/api/auth/register", "POST", { email, password: "Pass12!" })).status,
       400,
     );
     const result = await request("/api/auth/register", "POST", {
@@ -301,7 +301,14 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
       .where(eq(authTokens.tokenHash, hashToken(reset)));
     assert.ok(stored);
     assert.notEqual(stored.tokenHash, reset);
-    const nextPassword = "a different long password 456";
+    const resetPage = await request(`/api/auth/reset?token=${reset}`);
+    assert.equal(resetPage.status, 200);
+    assert.match(resetPage.body, /minlength="8"/);
+    assert.equal(
+      (await request("/api/auth/reset", "POST", { token: reset, password: "Reset1!" })).status,
+      400,
+    );
+    const nextPassword = "Reset12!";
     assert.equal(
       (await request("/api/auth/reset", "POST", { token: reset, password: nextPassword })).status,
       200,
@@ -346,7 +353,7 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
         await request(
           "/api/auth/account",
           "DELETE",
-          { password: "a different long password 456" },
+          { password: "Reset12!" },
           token,
         )
       ).status,

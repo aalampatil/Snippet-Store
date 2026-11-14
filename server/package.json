@@ -7,7 +7,7 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
+    "dev": "tsc-watch --onSuccess \"dotenv -e .env -o -- node dist/index.js\"",
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "tsx --test test/*.test.ts",

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const passwordSchema = z
   .string()
-  .min(15, "Use at least 15 characters.")
+  .min(8, "Use at least 8 characters.")
   .max(128, "Use no more than 128 characters.");
 export const emailSchema = z.string().trim().toLowerCase().email().max(255);
 export const tokenSchema = z.string().regex(/^[a-f0-9]{64}$/);

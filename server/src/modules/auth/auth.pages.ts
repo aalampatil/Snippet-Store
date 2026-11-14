@@ -48,7 +48,7 @@ for (const purpose of ["verify", "reset"] as const) {
     const title = purpose === "verify" ? "Verify your email" : "Reset your password";
     const passwordField =
       purpose === "reset"
-        ? '<p><label>New password (15–128 characters) <input name="password" type="password" minlength="15" maxlength="128" autocomplete="new-password" required></label></p>'
+        ? '<p><label>New password (8–128 characters) <input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password" required></label></p>'
         : "";
     res
       .type("html")

@@ -32,9 +32,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" | "recovery" }) 
       await requestEmail(email, "reset");
       return;
     }
-    if (!password || (mode === "register" && (password.length < 15 || password.length > 128))) {
+    if (!password || (mode === "register" && (password.length < 8 || password.length > 128))) {
       setValidation(
-        mode === "register" ? "Use a password with 15–128 characters." : "Enter your password.",
+        mode === "register" ? "Use a password with 8–128 characters." : "Enter your password.",
       );
       return;
     }
@@ -101,7 +101,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" | "recovery" }) 
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             textContentType={mode === "login" ? "password" : "newPassword"}
             editable={!submitting}
-            placeholder={mode === "register" ? "At least 15 characters" : "Your password"}
+            placeholder={mode === "register" ? "At least 8 characters" : "Your password"}
             maxLength={mode === "register" ? 128 : 200}
             onSubmitEditing={mode === "login" ? submit : undefined}
           />

@@ -127,7 +127,7 @@ Authenticated:
 
 Native clients send `X-Client-Platform: native` on login and use `Authorization: Bearer <token>`. Browsers receive an HttpOnly cookie; credentials are never stored in browser local storage.
 
-New passwords require 15–128 characters. Existing bcrypt passwords remain usable and are rehashed with scrypt on successful login.
+New passwords require 8–128 characters. Existing bcrypt passwords remain usable and are rehashed with scrypt on successful login.
 
 ## Production
 

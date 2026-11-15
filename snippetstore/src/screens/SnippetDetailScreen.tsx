@@ -1,210 +1,233 @@
 import { useCallback, useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { ScrollView, Share, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useFocusEffect, useRouter } from "expo-router";
 import { AppButton } from "@/components/AppButton";
-import { Screen } from "@/components/Screen";
-import { spacing, type ThemeColors } from "@/constants/theme";
+import { AppShell } from "@/components/AppShell";
+import { CodeBlock } from "@/components/CodeBlock";
+import { Icon } from "@/components/Icon";
+import { PageHeading } from "@/components/PageHeading";
+import { StatePanel } from "@/components/StatePanel";
+import { fonts, type ThemeColors } from "@/constants/theme";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deleteSnippet, fetchSnippet } from "@/services/snippetApi";
 import type { Snippet } from "@/types/snippet";
+import { confirmAction } from "@/utils/confirm";
 import { getErrorMessage } from "@/utils/errors";
 import { useRequireAuth } from "@/utils/useRequireAuth";
 
-type SnippetDetailScreenProps = {
-  snippetId: number;
-};
-
-export function SnippetDetailScreen({ snippetId }: SnippetDetailScreenProps) {
+export function SnippetDetailScreen({ snippetId }: { snippetId: number }) {
   const router = useRouter();
   const { user, loading: authLoading } = useRequireAuth();
   const { colors } = useTheme();
+  const { width } = useWindowDimensions();
   const styles = createStyles(colors);
   const [snippet, setSnippet] = useState<Snippet | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const loadSnippet = useCallback(async () => {
-    try {
-      setLoading(true);
-      setSnippet(await fetchSnippet(snippetId));
-    } catch (err) {
-      Alert.alert("Could not load snippet", getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [snippetId]);
-
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [retry, setRetry] = useState(0);
   useFocusEffect(
     useCallback(() => {
-      if (!authLoading && user) void loadSnippet();
-    }, [loadSnippet, authLoading, user]),
+      if (authLoading || !user) return;
+      let active = true;
+      setLoading(true);
+      setError(null);
+      setCopied(false);
+      void fetchSnippet(snippetId)
+        .then((result) => {
+          if (active) setSnippet(result);
+        })
+        .catch((err) => {
+          if (active) setError(getErrorMessage(err));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+      return () => {
+        active = false;
+      };
+    }, [snippetId, authLoading, user, retry]),
   );
 
-  if (authLoading || !user)
-    return (
-      <Screen>
-        <ActivityIndicator color={colors.accent} />
-      </Screen>
-    );
-
-  const remove = () => {
-    Alert.alert("Delete snippet?", "This cannot be undone.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteSnippet(snippetId);
-            router.replace("/");
-          } catch (err) {
-            Alert.alert("Could not delete snippet", getErrorMessage(err));
-          }
-        },
+  const remove = () =>
+    confirmAction(
+      "Delete snippet?",
+      "This snippet will be permanently removed from your library.",
+      "Delete",
+      () => {
+        setDeleting(true);
+        void deleteSnippet(snippetId)
+          .then(() => router.replace("/"))
+          .catch((err) => {
+            setNotice(getErrorMessage(err));
+            setDeleting(false);
+          });
       },
-    ]);
+    );
+  const copy = async () => {
+    if (!snippet) return;
+    try {
+      await Clipboard.setStringAsync(snippet.content);
+      setCopied(true);
+      setNotice("Copied to clipboard. Ready to put to work.");
+    } catch (err) {
+      setNotice(getErrorMessage(err));
+    }
   };
-
   const share = async () => {
-    if (!snippet) {
-      return;
+    if (!snippet) return;
+    try {
+      await Share.share({ message: snippet.content, title: snippet.title });
+    } catch {
+      setNotice("Sharing isn’t available here. Use Copy code to share your snippet.");
     }
-
-    await Share.share({ message: snippet.content, title: snippet.title });
   };
-
-  const copySnippet = async () => {
-    if (!snippet) {
-      return;
-    }
-
-    await Clipboard.setStringAsync(snippet.content);
-    Alert.alert("Copied", "Snippet copied to clipboard.");
-  };
-
-  if (loading) {
-    return (
-      <Screen style={styles.center}>
-        <ActivityIndicator color={colors.accent} />
-      </Screen>
-    );
-  }
-
-  if (!snippet) {
-    return (
-      <Screen style={styles.center}>
-        <Text style={styles.muted}>Snippet not found.</Text>
-      </Screen>
-    );
-  }
-
   return (
-    <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.category}>{snippet.category?.name ?? "Uncategorized"}</Text>
-            <Text style={styles.title}>{snippet.title}</Text>
-          </View>
+    <AppShell title="Snippet details">
+      {loading || authLoading ? (
+        <StatePanel loading title="Opening your snippet" />
+      ) : error || !snippet ? (
+        <StatePanel
+          icon="file-text"
+          title="This snippet couldn’t load"
+          description={error || "The snippet may have been removed."}
+          action="Try again"
+          onAction={() => setRetry((current) => current + 1)}
+        />
+      ) : (
+        <ScrollView contentContainerStyle={[styles.content, { padding: width < 650 ? 20 : 36 }]}>
           <AppButton
-            title="Edit"
-            onPress={() =>
-              router.push({ pathname: "/snippets/[id]/edit", params: { id: snippet.id } })
+            title="Back to library"
+            tone="ghost"
+            icon="arrow-left"
+            onPress={() => router.replace("/")}
+            style={{ alignSelf: "flex-start", marginLeft: -16 }}
+          />
+          <PageHeading
+            eyebrow={snippet.category?.name.toUpperCase() || "YOUR COLLECTION"}
+            title={snippet.title}
+            description={snippet.note || "A useful piece of code, ready for your next project."}
+            action={
+              <AppButton
+                title="Edit snippet"
+                icon="edit-2"
+                tone="secondary"
+                onPress={() =>
+                  router.push({ pathname: "/snippets/[id]/edit", params: { id: snippet.id } })
+                }
+                style={{ alignSelf: "flex-start" }}
+              />
             }
           />
-        </View>
-
-        {snippet.note ? <Text style={styles.note}>{snippet.note}</Text> : null}
-
-        <View style={styles.metaRow}>
-          {snippet.language ? <Text style={styles.meta}>{snippet.language}</Text> : null}
-          {snippet.project ? <Text style={styles.meta}>{snippet.project}</Text> : null}
-        </View>
-
-        <Text selectable style={styles.code}>
-          {snippet.content}
-        </Text>
-
-        <View style={styles.actions}>
-          <AppButton title="Copy" onPress={copySnippet} />
-          <AppButton title="Share" tone="secondary" onPress={share} />
-          <AppButton title="Delete" tone="danger" onPress={remove} />
-        </View>
-      </ScrollView>
-    </Screen>
+          <View style={styles.metadata}>
+            <View style={styles.metaItem}>
+              <Icon name="code" color={colors.accent} size={14} />
+              <Text style={styles.metaText}>{snippet.language || "Plain text"}</Text>
+            </View>
+            {snippet.project ? (
+              <View style={styles.metaItem}>
+                <Icon name="folder" color={colors.muted} size={14} />
+                <Text style={styles.metaText}>{snippet.project}</Text>
+              </View>
+            ) : null}
+            <View style={styles.metaItem}>
+              <Icon name="clock" color={colors.muted} size={13} />
+              <Text style={styles.metaText}>
+                Updated{" "}
+                {new Date(snippet.updatedAt).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.codePanel}>
+            <View style={styles.codeHeader}>
+              <View style={styles.metaItem}>
+                <Icon name="file-text" color={colors.muted} size={15} />
+                <Text style={styles.codeTitle}>{snippet.language || "Snippet"}</Text>
+              </View>
+              <AppButton
+                title={copied ? "Copied!" : "Copy code"}
+                icon={copied ? "check" : "copy"}
+                tone="secondary"
+                small
+                onPress={copy}
+              />
+            </View>
+            <CodeBlock content={snippet.content} />
+            <View style={styles.codeFooter}>
+              <Text style={styles.lineCount}>{snippet.content.split("\n").length} lines</Text>
+              <View style={styles.metaItem}>
+                <Icon name="lock" color={colors.muted} size={11} />
+                <Text style={styles.lineCount}>Private snippet</Text>
+              </View>
+            </View>
+          </View>
+          {notice ? (
+            <Text accessibilityLiveRegion="polite" style={styles.notice}>
+              {notice}
+            </Text>
+          ) : null}
+          <View style={styles.actions}>
+            <AppButton
+              title="Delete snippet"
+              tone="danger"
+              icon="trash-2"
+              onPress={remove}
+              loading={deleting}
+            />
+            <View style={{ flex: 1 }} />
+            <AppButton title="Share" tone="secondary" icon="share-2" onPress={share} />
+          </View>
+        </ScrollView>
+      )}
+    </AppShell>
   );
 }
-
 function createStyles(colors: ThemeColors) {
   return StyleSheet.create({
-    content: {
-      gap: spacing.md,
-      padding: spacing.md,
-      paddingBottom: spacing.xl,
-    },
-    center: {
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    header: {
-      flexDirection: "row",
-      alignItems: "flex-start",
-      justifyContent: "space-between",
-      gap: spacing.md,
-    },
-    titleBlock: {
-      flex: 1,
-      gap: spacing.xs,
-    },
-    category: {
-      color: colors.accent,
-      fontSize: 12,
-      fontWeight: "900",
-      textTransform: "uppercase",
-    },
-    title: {
-      color: colors.text,
-      fontSize: 26,
-      fontWeight: "900",
-    },
-    note: {
-      color: colors.text,
-      fontSize: 15,
-      lineHeight: 22,
-    },
-    metaRow: {
-      flexDirection: "row",
-      flexWrap: "wrap",
-      gap: spacing.sm,
-    },
-    meta: {
-      borderRadius: 8,
+    content: { width: "100%", maxWidth: 1200, alignSelf: "center", gap: 26, paddingBottom: 40 },
+    metadata: { flexDirection: "row", flexWrap: "wrap", gap: 22 },
+    metaItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+    metaText: { fontFamily: fonts.sans, color: colors.muted, fontSize: 11 },
+    codePanel: {
       borderWidth: 1,
       borderColor: colors.border,
-      color: colors.muted,
-      paddingHorizontal: spacing.sm,
-      paddingVertical: spacing.xs,
-      fontSize: 12,
-      fontWeight: "800",
-    },
-    code: {
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
+      borderRadius: 12,
+      overflow: "hidden",
       backgroundColor: colors.surface,
-      color: colors.text,
-      fontFamily: "monospace",
-      fontSize: 14,
-      lineHeight: 21,
-      padding: spacing.md,
     },
+    codeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: 15,
+      borderBottomWidth: 1,
+      borderColor: colors.border,
+      gap: 10,
+    },
+    codeTitle: { fontFamily: fonts.mono, color: colors.secondary, fontSize: 11 },
+    codeFooter: {
+      borderTopWidth: 1,
+      borderColor: colors.border,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: 15,
+    },
+    lineCount: { fontFamily: fonts.mono, color: colors.muted, fontSize: 10 },
+    notice: { fontFamily: fonts.sans, color: colors.secondary, fontSize: 12, lineHeight: 20 },
     actions: {
       flexDirection: "row",
-      justifyContent: "flex-end",
-      gap: spacing.sm,
-    },
-    muted: {
-      color: colors.muted,
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 10,
+      paddingTop: 4,
     },
   });
 }

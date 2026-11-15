@@ -1,3 +1,28 @@
+# UI redesign verification — 2026-11-15
+
+The Expo app now has a shared responsive workspace, refreshed authentication,
+library, editor, detail, category, and account screens, coordinated dark/light
+themes, and matching app icons. The API and authentication contracts are unchanged.
+
+Checks completed for this change:
+
+- App TypeScript check and both existing dependency regression tests passed.
+- Web static export and Android/iOS Hermes production exports passed.
+- Headless Chrome completed 19 UI checks with zero page errors. These used an
+  intercepted, in-memory API to isolate the interface; they do not verify live
+  email delivery, database persistence, or production authentication.
+- Browser coverage included email validation, signup/verification feedback,
+  password recovery, password visibility, sign-in/out, session restoration,
+  both themes, grid/list views, search and empty results, category filtering,
+  pagination beyond 30 snippets, snippet creation/editing/copying/deletion,
+  category creation/colors/deletion, guarded account deletion, and API error/retry.
+- Screenshots were reviewed at 320, 390, 768, and 1440 pixels. The responsive
+  library had no document-level horizontal overflow at those widths.
+
+Native production exports confirm that both platforms bundle successfully;
+physical-device interaction, keyboard behavior, and accessibility still need
+device testing. This change does not include a production deployment.
+
 # Release verification — 2026-11-12
 
 The authentication implementation is verified locally. Production hosting, real external email delivery, signed mobile builds, and store submission still require account configuration.

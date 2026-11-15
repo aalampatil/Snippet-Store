@@ -1,37 +1,24 @@
-import { Pressable, StyleSheet, Text } from "react-native";
-import type { ThemeColors } from "@/constants/theme";
+import { Pressable } from "react-native";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Icon } from "./Icon";
 
 export function ThemeToggle() {
   const { colors, mode, toggleTheme } = useTheme();
-  const styles = createStyles(colors);
-
   return (
-    <Pressable onPress={toggleTheme} style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}>
-      <Text style={styles.text}>{mode === "dark" ? "Light" : "Dark"}</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Switch to ${mode === "dark" ? "light" : "dark"} theme`}
+      onPress={toggleTheme}
+      style={({ pressed }) => ({
+        width: 40,
+        height: 40,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 9,
+        backgroundColor: pressed ? colors.surfaceAlt : "transparent",
+      })}
+    >
+      <Icon name={mode === "dark" ? "sun" : "moon"} color={colors.secondary} size={18} />
     </Pressable>
   );
-}
-
-function createStyles(colors: ThemeColors) {
-  return StyleSheet.create({
-    toggle: {
-      minHeight: 36,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surfaceAlt,
-      paddingHorizontal: 12,
-    },
-    pressed: {
-      opacity: 0.82,
-    },
-    text: {
-      color: colors.text,
-      fontSize: 13,
-      fontWeight: "800",
-    },
-  });
 }

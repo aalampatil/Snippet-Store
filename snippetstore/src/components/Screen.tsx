@@ -8,7 +8,12 @@ export function Screen({ style, ...props }: ViewProps) {
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
 
-  return <View {...props} style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }, style]} />;
+  return (
+    <View
+      {...props}
+      style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }, style]}
+    />
+  );
 }
 
 function createStyles(colors: ThemeColors) {

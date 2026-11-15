@@ -1,6 +1,6 @@
 # Snippet Store
 
-A personal code snippet manager for Android and iOS, built with Expo, React Native,
+A personal code snippet manager for Android, iOS, and web, built with Expo, React Native,
 TypeScript, Express, and PostgreSQL. Save, search, and organize private snippets by
 category across your devices.
 
@@ -9,6 +9,7 @@ category across your devices.
 - Revocable seven-day sessions; native tokens stored with Expo SecureStore.
 - In-app and browser account deletion.
 - Search, categories, editing, clipboard, sharing, and dark/light themes.
+- Responsive workspace navigation, grid/list views, code previews, and paginated search.
 - Render deployment configuration and CI checks.
 
 There is no Google sign-in integration.

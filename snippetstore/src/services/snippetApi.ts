@@ -27,14 +27,20 @@ export async function deleteCategory(id: number) {
   await api.delete(`/api/categories/${id}`);
 }
 
-export async function fetchSnippets(filters?: { search?: string; categoryId?: number | null }) {
+export async function fetchSnippetPage(filters?: {
+  search?: string;
+  categoryId?: number | null;
+  page?: number;
+}) {
   const response = await api.get<ListResponse<Snippet[]>>("/api/snippets", {
     params: {
       search: filters?.search || undefined,
       categoryId: filters?.categoryId || undefined,
+      page: filters?.page ?? 1,
+      limit: 30,
     },
   });
-  return response.data.data;
+  return response.data;
 }
 
 export async function fetchSnippet(id: number) {

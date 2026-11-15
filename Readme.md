@@ -4,13 +4,18 @@ A personal code snippet manager for Android, iOS, and web, built with Expo, Reac
 TypeScript, Express, and PostgreSQL. Save, search, and organize private snippets by
 category across your devices.
 
-- Email/password signup with email verification, sign-in, and password recovery.
+- Passwordless email-code signup and sign-in, with existing password login and recovery available.
+- Mailtrap SMTP for local testing and Resend for production authentication emails.
 - Private snippets and categories scoped to each account.
 - Revocable seven-day sessions; native tokens stored with Expo SecureStore.
 - In-app and browser account deletion.
 - Search, categories, editing, clipboard, sharing, and dark/light themes.
 - Responsive workspace navigation, grid/list views, code previews, and paginated search.
 - Render deployment configuration and CI checks.
+
+Email codes expire after 10 minutes and work once. Requests have a 60-second
+resend cooldown, a five-per-hour limit per address and purpose, and a maximum of
+five verification attempts. Account deletion requires a separate confirmation code.
 
 There is no Google sign-in integration.
 
@@ -70,7 +75,12 @@ npm start
 
 SecureStore adds native code. Rebuild a development client after this change. For browser development, add the exact Expo origin (for example `http://localhost:8081`) to `CORS_ORIGIN` and use the same hostname for app and API.
 
-To test verification/recovery locally, configure SMTP and set `REQUIRE_EMAIL_VERIFICATION=true`. `PUBLIC_API_URL` must be reachable by the browser opening the email.
+Set the Mailtrap sandbox host, port, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_FROM`
+in `server/.env`; use `EMAIL_PROVIDER=smtp`. Test messages appear in the Mailtrap
+sandbox. OTP login always requires a valid email code, including in development.
+`REQUIRE_EMAIL_VERIFICATION=false` only bypasses verification for legacy password
+signup. Set it to `true` when testing legacy verification/recovery flows.
+`PUBLIC_API_URL` must be reachable by the browser opening a verification/reset link.
 
 ## Verify
 
@@ -102,29 +112,34 @@ The URL-decoder dependency override and one-line CommonJS compatibility patch ar
 
 Public:
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /health` | Process health |
-| `GET /ready` | Database readiness |
-| `POST /api/auth/register` | Create account; production returns 202 pending email verification |
-| `POST /api/auth/login` | Sign in |
-| `POST /api/auth/logout` | Revoke the current session |
-| `POST /api/auth/forgot-password` | Request a password-reset email |
-| `POST /api/auth/resend-verification` | Request a verification email |
-| `GET/POST /api/auth/verify` | Browser confirmation page |
-| `GET/POST /api/auth/reset` | Browser password-reset page |
-| `GET/POST /api/auth/delete-account` | Browser account deletion with password confirmation |
+| Endpoint                                | Purpose                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `GET /health`                           | Process health                                                                                        |
+| `GET /ready`                            | Database readiness                                                                                    |
+| `POST /api/auth/otp/request`            | Send a six-digit sign-in code; body: `{ "email": "..." }`                                             |
+| `POST /api/auth/otp/verify`             | Verify `{ "email": "...", "challengeId": "...", "code": "..." }`; create a verified account if needed |
+| `POST /api/auth/register`               | Create account; production returns 202 pending email verification                                     |
+| `POST /api/auth/login`                  | Sign in                                                                                               |
+| `POST /api/auth/logout`                 | Revoke the current session                                                                            |
+| `POST /api/auth/forgot-password`        | Request a password-reset email                                                                        |
+| `POST /api/auth/resend-verification`    | Request a verification email                                                                          |
+| `GET/POST /api/auth/verify`             | Browser confirmation page                                                                             |
+| `GET/POST /api/auth/reset`              | Browser password-reset page                                                                           |
+| `GET/POST /api/auth/delete-account`     | Browser account deletion with password confirmation                                                   |
+| `POST /api/auth/delete-account/code`    | Send a browser account-deletion confirmation code                                                     |
+| `POST /api/auth/delete-account/confirm` | Delete after code verification and explicit confirmation                                              |
 
 Authenticated:
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/auth/me` | Current user |
-| `DELETE /api/auth/account` | Delete account; body: `{ "password": "..." }` |
-| `GET/POST /api/categories` | List/create own categories |
-| `DELETE /api/categories/:id` | Delete own category |
-| `GET/POST /api/snippets` | List/create own snippets |
-| `GET/PUT/DELETE /api/snippets/:id` | Read/update/delete own snippet |
+| Endpoint                               | Purpose                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET /api/auth/me`                     | Current user                                                                                            |
+| `POST /api/auth/account/deletion-code` | Send a deletion code to the signed-in account                                                           |
+| `DELETE /api/auth/account`             | Delete with `{ "challengeId": "...", "code": "..." }`; legacy `{ "password": "..." }` remains supported |
+| `GET/POST /api/categories`             | List/create own categories                                                                              |
+| `DELETE /api/categories/:id`           | Delete own category                                                                                     |
+| `GET/POST /api/snippets`               | List/create own snippets                                                                                |
+| `GET/PUT/DELETE /api/snippets/:id`     | Read/update/delete own snippet                                                                          |
 
 Native clients send `X-Client-Platform: native` on login and use `Authorization: Bearer <token>`. Browsers receive an HttpOnly cookie; credentials are never stored in browser local storage.
 

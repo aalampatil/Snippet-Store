@@ -1,3 +1,39 @@
+# Database migration completion — 2026-11-15
+
+- Local and production databases have all five repository migrations applied,
+  through `0004_email_otp`, with no pending migrations. Historical migration
+  checksums match the checked-in SQL, accounting for line endings.
+- Production was three migrations behind. Before applying `0002`, `0003`, and
+  `0004`, a custom-format PostgreSQL backup was restored into a disposable local
+  database. Row checksums and migration history matched production.
+- All three migrations passed on that restored copy before being applied to
+  production. Existing category and snippet data remained unchanged.
+- Production schema checks confirmed the account/session tables, nullable
+  password hashes, email challenge columns, and all three OTP indexes.
+- The backup and its verification report are retained outside the repository in
+  the local temporary directory. The disposable restore database was removed.
+
+# Email OTP verification — 2026-11-15
+
+- All 36 server tests passed against an isolated local PostgreSQL database.
+  Coverage includes legacy password auth, SMTP email generation, OTP expiry,
+  replay, address/challenge binding, persisted incorrect-attempt limits,
+  cooldowns and hourly limits, concurrent consumption, failed-delivery rollback,
+  pre-registration takeover protection, browser/native sessions, and account deletion.
+- A real browser → API → PostgreSQL → test SMTP flow passed nine checks with
+  zero page errors. It created a verified passwordless account, rejected an
+  incorrect code, saved private data, restored the cookie session after reload,
+  signed in again with a new code, and deleted the account with a separate code.
+- Mailtrap accepted one OTP preview in the configured sandbox. Resend accepted
+  one test message to its documented simulated delivery address using the
+  configured production sender. This confirms provider acceptance, not delivery
+  to a real external mailbox or a deployed production flow.
+- Local SMTP variable names were normalized without changing credential values.
+  Production credentials remain in ignored environment files and are not committed.
+- API/app TypeScript checks, both dependency regression tests, and web, Android,
+  and iOS production exports passed. Migration `0004_email_otp` was applied to the
+  local application database after testing; production was not migrated or deployed.
+
 # UI redesign verification — 2026-11-15
 
 The Expo app now has a shared responsive workspace, refreshed authentication,
@@ -29,20 +65,20 @@ The authentication implementation is verified locally. Production hosting, real 
 
 ## Checks completed
 
-| Check | Result |
-| --- | --- |
-| API TypeScript build | Passed |
-| PostgreSQL authentication and environment tests | 15 passed |
-| App TypeScript check | Passed |
-| Clean app lockfile install and postinstall patch | Passed |
-| URL decoder regression tests | 2 passed |
-| Expo SDK dependency compatibility check | Passed |
-| Android Hermes production bundle export | Passed |
-| iOS Hermes production bundle export | Passed |
-| Web static export | Passed |
-| HTTPS browser authentication flow in headless Chrome | Passed |
-| Render Blueprint public JSON Schema validation | Passed |
-| Server production dependency audit | 0 vulnerabilities |
+| Check                                                | Result            |
+| ---------------------------------------------------- | ----------------- |
+| API TypeScript build                                 | Passed            |
+| PostgreSQL authentication and environment tests      | 15 passed         |
+| App TypeScript check                                 | Passed            |
+| Clean app lockfile install and postinstall patch     | Passed            |
+| URL decoder regression tests                         | 2 passed          |
+| Expo SDK dependency compatibility check              | Passed            |
+| Android Hermes production bundle export              | Passed            |
+| iOS Hermes production bundle export                  | Passed            |
+| Web static export                                    | Passed            |
+| HTTPS browser authentication flow in headless Chrome | Passed            |
+| Render Blueprint public JSON Schema validation       | Passed            |
+| Server production dependency audit                   | 0 vulnerabilities |
 
 The API tests use a separate PostgreSQL 17 database and an SMTP test receiver. They cover anonymous rejection, password validation, actual SMTP message generation, verification without GET consumption, token replay/expiry, cookie sessions, origin restrictions, per-account category/snippet isolation, logout revocation, recovery, deletion cascades, rate limits, and fail-closed production configuration.
 

@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { loginSchema, passwordSchema, registerSchema } from "../src/modules/auth/auth.schemas.js";
+import {
+  emailCodeSchema,
+  loginSchema,
+  passwordSchema,
+  registerSchema,
+  verifyEmailCodeSchema,
+} from "../src/modules/auth/auth.schemas.js";
 
 test("registration accepts eight characters and rejects seven", () => {
   const email = "test@example.com";
@@ -18,5 +24,16 @@ test("new passwords accept eight through 128 characters", () => {
 });
 
 test("login accepts existing passwords shorter than eight characters", () => {
-  assert.equal(loginSchema.safeParse({ email: "test@example.com", password: "legacy" }).success, true);
+  assert.equal(
+    loginSchema.safeParse({ email: "test@example.com", password: "legacy" }).success,
+    true,
+  );
+});
+
+test("email codes require six digits and an unguessable challenge", () => {
+  const input = { email: "  Test@EXAMPLE.com ", challengeId: "a".repeat(64), code: "012345" };
+  assert.equal(verifyEmailCodeSchema.parse(input).email, "test@example.com");
+  for (const code of ["12345", "1234567", "12abcd", 123456, " 123456 "])
+    assert.equal(emailCodeSchema.safeParse({ ...input, code }).success, false);
+  assert.equal(emailCodeSchema.safeParse({ ...input, challengeId: "guessable" }).success, false);
 });

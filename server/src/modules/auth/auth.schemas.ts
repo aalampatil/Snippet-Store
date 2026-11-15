@@ -10,4 +10,10 @@ export const accountPasswordSchema = z.object({ password: z.string().min(1).max(
 export const loginSchema = accountPasswordSchema.extend({ email: emailSchema });
 export const registerSchema = z.object({ email: emailSchema, password: passwordSchema });
 export const emailRequestSchema = z.object({ email: emailSchema });
+export const emailCodeSchema = z.object({
+  challengeId: tokenSchema,
+  code: z.string().regex(/^\d{6}$/, "Enter the six-digit code from your email."),
+});
+export const verifyEmailCodeSchema = emailCodeSchema.extend({ email: emailSchema });
+export const accountDeletionSchema = z.union([accountPasswordSchema, emailCodeSchema]);
 export const deleteAccountSchema = loginSchema.extend({ confirm: z.literal("delete") });

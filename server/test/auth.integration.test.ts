@@ -56,13 +56,16 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
     CORS_ORIGIN: "https://app.example.com",
     PUBLIC_API_URL: "http://127.0.0.1:3000",
     TRUST_PROXY_HOPS: "0",
+    EMAIL_PROVIDER: "smtp",
+    EMAIL_FROM: "test@example.com",
+    SMTP_USER: "",
+    SMTP_PASSWORD: "",
   });
-  delete process.env.SMTP_USER;
-  delete process.env.SMTP_PASSWORD;
   const { db, pool } = await import("../src/db/index.js");
   const { users, sessions, authTokens, snippets, categories } = await import("../src/db/schema.js");
-  const { hashToken, hashPassword, verifyPassword } =
-    await import("../src/modules/auth/password.js");
+  const { hashToken, hashPassword, verifyPassword } = await import(
+    "../src/modules/auth/password.js"
+  );
   const { createApp } = await import("../src/app.js");
   const createdIds: number[] = [];
   t.after(async () => {
@@ -349,14 +352,7 @@ test("production authentication and account isolation", { timeout: 60000 }, asyn
       401,
     );
     assert.equal(
-      (
-        await request(
-          "/api/auth/account",
-          "DELETE",
-          { password: "Reset12!" },
-          token,
-        )
-      ).status,
+      (await request("/api/auth/account", "DELETE", { password: "Reset12!" }, token)).status,
       204,
     );
     assert.equal((await db.select().from(snippets).where(eq(snippets.userId, userId))).length, 0);

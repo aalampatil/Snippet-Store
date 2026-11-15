@@ -14,6 +14,7 @@ import { AppButton } from "@/components/AppButton";
 import { AppTextInput } from "@/components/AppTextInput";
 import { Brand } from "@/components/Brand";
 import { CodeBlock } from "@/components/CodeBlock";
+import { EmailLoginForm } from "@/components/EmailLoginForm";
 import { Icon } from "@/components/Icon";
 import { Screen } from "@/components/Screen";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -35,6 +36,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" | "recovery" }) 
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [validation, setValidation] = useState<string | null>(null);
+  const [passwordMode, setPasswordMode] = useState(false);
   const title =
     mode === "login"
       ? "Welcome back."
@@ -141,154 +143,179 @@ export function AuthForm({ mode }: { mode: "login" | "register" | "recovery" }) 
               </View>
               <View style={styles.formCenter}>
                 <View style={styles.form}>
-                  <View style={styles.formIntro}>
-                    <View style={styles.formIcon}>
-                      <Icon
-                        name={
-                          mode === "recovery" ? "key" : mode === "register" ? "code" : "terminal"
-                        }
-                        color={colors.accent}
-                        size={24}
-                      />
-                    </View>
-                    <Text accessibilityRole="header" style={styles.title}>
-                      {title}
-                    </Text>
-                    <Text style={styles.description}>
-                      {mode === "register"
-                        ? "Create your personal snippet library. Your first great save is just a moment away."
-                        : mode === "recovery"
-                          ? "Enter your email and we’ll send a link to reset your password."
-                          : "Sign in to your workspace. Your best code is waiting."}
-                    </Text>
-                  </View>
-                  {validation || error ? (
-                    <View style={[styles.notice, { backgroundColor: colors.dangerSoft }]}>
-                      <Text
-                        accessibilityRole="alert"
-                        style={[styles.noticeText, { color: colors.danger }]}
-                      >
-                        {validation ?? error}
-                      </Text>
-                    </View>
-                  ) : null}
-                  {message ? (
-                    <View style={[styles.notice, { backgroundColor: colors.accentSoft }]}>
-                      <Text
-                        accessibilityLiveRegion="polite"
-                        style={[styles.noticeText, { color: colors.accent }]}
-                      >
-                        {message}
-                      </Text>
-                    </View>
-                  ) : null}
-                  <AppTextInput
-                    label="Email address"
-                    value={email}
-                    onChangeText={(value) => {
-                      clearError();
-                      setValidation(null);
-                      setEmail(value);
-                    }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="email"
-                    keyboardType="email-address"
-                    textContentType="emailAddress"
-                    placeholder="you@example.com"
-                    editable={!submitting}
-                    maxLength={255}
-                    onSubmitEditing={mode === "recovery" ? submit : undefined}
-                  />
-                  {mode !== "recovery" ? (
-                    <AppTextInput
-                      label="Password"
-                      value={password}
-                      onChangeText={(value) => {
-                        clearError();
-                        setValidation(null);
-                        setPassword(value);
-                      }}
-                      secureTextEntry
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      autoComplete={mode === "login" ? "current-password" : "new-password"}
-                      textContentType={mode === "login" ? "password" : "newPassword"}
-                      editable={!submitting}
-                      placeholder={
-                        mode === "register" ? "At least 8 characters" : "Enter your password"
-                      }
-                      maxLength={mode === "register" ? 128 : 200}
-                      onSubmitEditing={mode === "login" ? submit : undefined}
+                  {mode !== "recovery" && !passwordMode ? (
+                    <EmailLoginForm
+                      registerMode={mode === "register"}
+                      onUsePassword={() => setPasswordMode(true)}
                     />
-                  ) : null}
-                  {mode === "login" ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={submitting}
-                      onPress={() => navigate("/recovery")}
-                      style={styles.forgot}
-                    >
-                      <Text style={styles.link}>Forgot password?</Text>
-                    </Pressable>
-                  ) : null}
-                  {mode === "register" ? (
-                    <AppTextInput
-                      label="Confirm password"
-                      value={confirmation}
-                      onChangeText={setConfirmation}
-                      secureTextEntry
-                      autoComplete="new-password"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      editable={!submitting}
-                      maxLength={128}
-                      placeholder="Re-enter your password"
-                      onSubmitEditing={submit}
-                    />
-                  ) : null}
-                  <AppButton
-                    title={submitting ? "Please wait…" : actionTitle}
-                    icon="arrow-right"
-                    loading={submitting}
-                    onPress={submit}
-                  />
-                  <View style={styles.switchRow}>
-                    <Text style={styles.switchText}>
-                      {mode === "login"
-                        ? "New to Snippet Store?"
-                        : mode === "register"
-                          ? "Already have an account?"
-                          : "Remember your password?"}
-                    </Text>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={submitting}
-                      onPress={() => navigate(mode === "login" ? "/register" : "/login")}
-                      style={styles.textButton}
-                    >
-                      <Text style={styles.link}>
-                        {mode === "login" ? "Create account" : "Back to sign in"}
-                      </Text>
-                    </Pressable>
-                  </View>
-                  {mode !== "recovery" ? (
-                    <View style={styles.verification}>
-                      <Text style={styles.verificationText}>
-                        Waiting for your verification email?
-                      </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={submitting}
-                        onPress={() => {
-                          if (validateEmail()) void requestEmail(email, "verify");
+                  ) : (
+                    <>
+                      <View style={styles.formIntro}>
+                        <View style={styles.formIcon}>
+                          <Icon
+                            name={
+                              mode === "recovery"
+                                ? "key"
+                                : mode === "register"
+                                  ? "code"
+                                  : "terminal"
+                            }
+                            color={colors.accent}
+                            size={24}
+                          />
+                        </View>
+                        <Text accessibilityRole="header" style={styles.title}>
+                          {title}
+                        </Text>
+                        <Text style={styles.description}>
+                          {mode === "register"
+                            ? "Create your personal snippet library. Your first great save is just a moment away."
+                            : mode === "recovery"
+                              ? "Enter your email and we’ll send a link to reset your password."
+                              : "Sign in to your workspace. Your best code is waiting."}
+                        </Text>
+                      </View>
+                      {validation || error ? (
+                        <View style={[styles.notice, { backgroundColor: colors.dangerSoft }]}>
+                          <Text
+                            accessibilityRole="alert"
+                            style={[styles.noticeText, { color: colors.danger }]}
+                          >
+                            {validation ?? error}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {message ? (
+                        <View style={[styles.notice, { backgroundColor: colors.accentSoft }]}>
+                          <Text
+                            accessibilityLiveRegion="polite"
+                            style={[styles.noticeText, { color: colors.accent }]}
+                          >
+                            {message}
+                          </Text>
+                        </View>
+                      ) : null}
+                      <AppTextInput
+                        label="Email address"
+                        value={email}
+                        onChangeText={(value) => {
+                          clearError();
+                          setValidation(null);
+                          setEmail(value);
                         }}
-                        style={styles.textButton}
-                      >
-                        <Text style={styles.subtleLink}>Resend verification email</Text>
-                      </Pressable>
-                    </View>
-                  ) : null}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        autoComplete="email"
+                        keyboardType="email-address"
+                        textContentType="emailAddress"
+                        placeholder="you@example.com"
+                        editable={!submitting}
+                        maxLength={255}
+                        onSubmitEditing={mode === "recovery" ? submit : undefined}
+                      />
+                      {mode !== "recovery" ? (
+                        <AppTextInput
+                          label="Password"
+                          value={password}
+                          onChangeText={(value) => {
+                            clearError();
+                            setValidation(null);
+                            setPassword(value);
+                          }}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          autoComplete={mode === "login" ? "current-password" : "new-password"}
+                          textContentType={mode === "login" ? "password" : "newPassword"}
+                          editable={!submitting}
+                          placeholder={
+                            mode === "register" ? "At least 8 characters" : "Enter your password"
+                          }
+                          maxLength={mode === "register" ? 128 : 200}
+                          onSubmitEditing={mode === "login" ? submit : undefined}
+                        />
+                      ) : null}
+                      {mode === "login" ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={submitting}
+                          onPress={() => navigate("/recovery")}
+                          style={styles.forgot}
+                        >
+                          <Text style={styles.link}>Forgot password?</Text>
+                        </Pressable>
+                      ) : null}
+                      {mode === "register" ? (
+                        <AppTextInput
+                          label="Confirm password"
+                          value={confirmation}
+                          onChangeText={setConfirmation}
+                          secureTextEntry
+                          autoComplete="new-password"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                          editable={!submitting}
+                          maxLength={128}
+                          placeholder="Re-enter your password"
+                          onSubmitEditing={submit}
+                        />
+                      ) : null}
+                      <AppButton
+                        title={submitting ? "Please wait…" : actionTitle}
+                        icon="arrow-right"
+                        loading={submitting}
+                        onPress={submit}
+                      />
+                      <View style={styles.switchRow}>
+                        <Text style={styles.switchText}>
+                          {mode === "login"
+                            ? "New to Snippet Store?"
+                            : mode === "register"
+                              ? "Already have an account?"
+                              : "Remember your password?"}
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={submitting}
+                          onPress={() => navigate(mode === "login" ? "/register" : "/login")}
+                          style={styles.textButton}
+                        >
+                          <Text style={styles.link}>
+                            {mode === "login" ? "Create account" : "Back to sign in"}
+                          </Text>
+                        </Pressable>
+                      </View>
+                      {mode !== "recovery" ? (
+                        <View style={styles.verification}>
+                          <Text style={styles.verificationText}>
+                            Waiting for your verification email?
+                          </Text>
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={submitting}
+                            onPress={() => {
+                              if (validateEmail()) void requestEmail(email, "verify");
+                            }}
+                            style={styles.textButton}
+                          >
+                            <Text style={styles.subtleLink}>Resend verification email</Text>
+                          </Pressable>
+                        </View>
+                      ) : null}
+                      {mode !== "recovery" ? (
+                        <AppButton
+                          title="Use an email code instead"
+                          tone="ghost"
+                          icon="mail"
+                          disabled={submitting}
+                          onPress={() => {
+                            clearError();
+                            setPasswordMode(false);
+                          }}
+                        />
+                      ) : null}
+                    </>
+                  )}
                 </View>
               </View>
               <View style={styles.security}>

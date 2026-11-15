@@ -17,7 +17,8 @@ export async function hashPassword(password: string) {
   return `scrypt$${salt}$${key.toString("hex")}`;
 }
 
-export async function verifyPassword(password: string, hash: string) {
+export async function verifyPassword(password: string, hash: string | null) {
+  if (!hash) return false;
   if (hash.startsWith("$2")) return bcrypt.compare(password, hash);
   const [algorithm, salt, encoded] = hash.split("$");
   if (algorithm !== "scrypt" || !salt || !encoded) return false;

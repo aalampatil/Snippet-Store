@@ -4,10 +4,11 @@ import { cookieOptions, requestToken, requireAuth, sessionCookie } from "../../m
 import { authLimit, emailLimit } from "./auth.limits.js";
 import { authPagesRouter } from "./auth.pages.js";
 import {
-  accountPasswordSchema,
+  accountDeletionSchema,
   emailRequestSchema,
   loginSchema,
   registerSchema,
+  verifyEmailCodeSchema,
 } from "./auth.schemas.js";
 import {
   deleteAccount,
@@ -17,6 +18,7 @@ import {
   requestAuthEmail,
   revokeSession,
 } from "./auth.service.js";
+import { deleteAccountByCode, requestEmailCode, verifyLoginCode } from "./otp.service.js";
 
 export const authRouter = Router();
 authRouter.use((_req, res, next) => {
@@ -37,6 +39,38 @@ function sessionResponse(
     res.status(status).json({ data: { user: result.user, expiresAt: result.expiresAt } });
   }
 }
+
+authRouter.post(
+  "/otp/request",
+  authLimit,
+  emailLimit,
+  asyncHandler(async (req, res) => {
+    const { email } = emailRequestSchema.parse(req.body);
+    res.status(202).json({ data: await requestEmailCode(email) });
+  }),
+);
+authRouter.post(
+  "/otp/verify",
+  authLimit,
+  asyncHandler(async (req, res) => {
+    sessionResponse(req, res, await verifyLoginCode(verifyEmailCodeSchema.parse(req.body)));
+  }),
+);
+
+authRouter.post(
+  "/account/deletion-code",
+  requireAuth,
+  authLimit,
+  emailLimit,
+  asyncHandler(async (req, res) => {
+    const user = await getUserById(req.user!.id);
+    if (!user) {
+      res.status(401).json({ message: "Please sign in again." });
+      return;
+    }
+    res.status(202).json({ data: await requestEmailCode(user.email, "delete") });
+  }),
+);
 
 authRouter.post(
   "/register",
@@ -94,8 +128,16 @@ authRouter.delete(
   requireAuth,
   authLimit,
   asyncHandler(async (req, res) => {
-    const { password } = accountPasswordSchema.parse(req.body);
-    await deleteAccount(req.user!.id, password);
+    const input = accountDeletionSchema.parse(req.body);
+    if ("password" in input) await deleteAccount(req.user!.id, input.password);
+    else {
+      const user = await getUserById(req.user!.id);
+      if (!user) {
+        res.status(401).json({ message: "Please sign in again." });
+        return;
+      }
+      await deleteAccountByCode({ ...input, email: user.email });
+    }
     res.clearCookie(sessionCookie, cookieOptions);
     res.status(204).send();
   }),

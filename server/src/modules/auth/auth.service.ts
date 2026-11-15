@@ -1,7 +1,7 @@
 import { and, eq, gt } from "drizzle-orm";
 import { env } from "../../config/env.js";
 import { db } from "../../db/index.js";
-import { authTokens, sessions, users } from "../../db/schema.js";
+import { authTokens, emailChallenges, sessions, users } from "../../db/schema.js";
 import { AppError } from "../../middlewares/error-handler.js";
 import { hashPassword, hashToken, newToken, verifyPassword } from "./password.js";
 import { sendAuthEmail } from "./email.js";
@@ -54,7 +54,7 @@ export async function loginUser(input: { email: string; password: string }) {
       403,
     );
   }
-  if (user.passwordHash.startsWith("$2")) {
+  if (user.passwordHash?.startsWith("$2")) {
     await db
       .update(users)
       .set({ passwordHash: await hashPassword(input.password), updatedAt: new Date() })
@@ -63,10 +63,15 @@ export async function loginUser(input: { email: string; password: string }) {
   return issueSession({ id: user.id, email: user.email });
 }
 
-async function issueSession(user: { id: number; email: string }) {
+export async function issueSession(
+  user: { id: number; email: string },
+  executor: Pick<typeof db, "insert"> = db,
+) {
   const token = newToken();
   const expiresAt = new Date(Date.now() + env.sessionDays * 86400000);
-  await db.insert(sessions).values({ tokenHash: hashToken(token), userId: user.id, expiresAt });
+  await executor
+    .insert(sessions)
+    .values({ tokenHash: hashToken(token), userId: user.id, expiresAt });
   return { token, user, expiresAt };
 }
 
@@ -162,12 +167,18 @@ export async function deleteAccount(userId: number, password: string) {
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user || !(await verifyPassword(password, user.passwordHash)))
     throw new AppError("Invalid password.", 401);
-  await db.delete(users).where(eq(users.id, userId));
+  await db.transaction(async (tx) => {
+    await tx.delete(users).where(eq(users.id, userId));
+    await tx.delete(emailChallenges).where(eq(emailChallenges.email, user.email));
+  });
 }
 
 export async function deleteAccountWithCredentials(input: { email: string; password: string }) {
   const [user] = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
   const ok = await verifyPassword(input.password, user?.passwordHash ?? (await dummyHash));
   if (!user || !ok) throw new AppError("Invalid email or password.", 401);
-  await db.delete(users).where(eq(users.id, user.id));
+  await db.transaction(async (tx) => {
+    await tx.delete(users).where(eq(users.id, user.id));
+    await tx.delete(emailChallenges).where(eq(emailChallenges.email, user.email));
+  });
 }

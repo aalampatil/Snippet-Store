@@ -2,6 +2,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -13,7 +14,7 @@ export const users = pgTable(
   {
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     email: varchar({ length: 255 }).notNull().unique(),
-    passwordHash: text().notNull(),
+    passwordHash: text(),
     emailVerifiedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp({ withTimezone: true }).defaultNow().notNull(),
@@ -69,6 +70,26 @@ export const authTokens = pgTable(
   (table) => [
     index("auth_tokens_user_idx").on(table.userId),
     index("auth_tokens_expiry_idx").on(table.expiresAt),
+  ],
+);
+
+export const emailChallenges = pgTable(
+  "email_challenges",
+  {
+    email: varchar({ length: 255 }).notNull(),
+    purpose: varchar({ length: 16 }).notNull(),
+    challengeHash: varchar({ length: 64 }),
+    codeHash: varchar({ length: 64 }),
+    expiresAt: timestamp({ withTimezone: true }),
+    attempts: integer().notNull().default(0),
+    sentAt: timestamp({ withTimezone: true }),
+    requestCount: integer().notNull().default(0),
+    windowStartedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.email, table.purpose] }),
+    uniqueIndex("email_challenges_hash_idx").on(table.challengeHash),
+    index("email_challenges_window_idx").on(table.windowStartedAt),
   ],
 );
 

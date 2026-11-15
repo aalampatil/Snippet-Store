@@ -15,7 +15,10 @@ import { getErrorMessage } from "@/utils/errors";
 
 type AuthUser = { id: number; email: string };
 type AuthResult =
-  { token?: string; user: AuthUser } | { requiresVerification: true; message: string };
+  | { token?: string; user: AuthUser }
+  | { requiresVerification: true; message: string };
+export type EmailChallenge = { challengeId: string; expiresAt: string; resendAt: number };
+type ChallengeResponse = { challengeId: string; expiresAt: string; resendAfterSeconds: number };
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
@@ -24,6 +27,10 @@ type AuthContextValue = {
   message: string | null;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
+  requestLoginCode: (email: string) => Promise<EmailChallenge | undefined>;
+  verifyLoginCode: (email: string, challengeId: string, code: string) => Promise<void>;
+  requestDeletionCode: () => Promise<EmailChallenge | undefined>;
+  deleteAccountWithCode: (challengeId: string, code: string) => Promise<boolean>;
   logout: () => Promise<void>;
   requestEmail: (email: string, purpose: "reset" | "verify") => Promise<void>;
   deleteAccount: (password: string) => Promise<boolean>;
@@ -81,6 +88,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const establishSession = useCallback(async (result: { token?: string; user: AuthUser }) => {
+    try {
+      await writeSession(result.token ?? null);
+    } catch (storageError) {
+      await api
+        .post(
+          "/api/auth/logout",
+          {},
+          { headers: result.token ? { Authorization: `Bearer ${result.token}` } : {} },
+        )
+        .catch(() => {});
+      throw storageError;
+    }
+    generation.current++;
+    setError(null);
+    setUser(result.user);
+  }, []);
+
   const authenticate = useCallback(
     async (path: "login" | "register", email: string, password: string) => {
       if (busy.current) return;
@@ -98,22 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setMessage(result.message);
           return;
         }
-        try {
-          await writeSession(result.token ?? null);
-        } catch (storageError) {
-          // A session that cannot be saved must be revoked rather than left active.
-          await api
-            .post(
-              "/api/auth/logout",
-              {},
-              { headers: result.token ? { Authorization: `Bearer ${result.token}` } : {} },
-            )
-            .catch(() => {});
-          throw storageError;
-        }
-        generation.current++;
-        setError(null);
-        setUser(result.user);
+        await establishSession(result);
       } catch (err) {
         setError(getErrorMessage(err));
       } finally {
@@ -121,7 +131,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSubmitting(false);
       }
     },
-    [],
+    [establishSession],
+  );
+
+  const requestCode = useCallback(async (path: string, body: object) => {
+    if (busy.current) return;
+    busy.current = true;
+    setSubmitting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await api.post<{ data: ChallengeResponse }>(path, body);
+      const data = response.data.data;
+      return {
+        challengeId: data.challengeId,
+        expiresAt: data.expiresAt,
+        resendAt: Date.now() + data.resendAfterSeconds * 1000,
+      };
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      busy.current = false;
+      setSubmitting(false);
+    }
+  }, []);
+
+  const verifyLoginCode = useCallback(
+    async (email: string, challengeId: string, code: string) => {
+      if (busy.current) return;
+      busy.current = true;
+      setSubmitting(true);
+      setError(null);
+      setMessage(null);
+      try {
+        const response = await api.post<{ data: { token?: string; user: AuthUser } }>(
+          "/api/auth/otp/verify",
+          { email: email.trim(), challengeId, code },
+        );
+        await establishSession(response.data.data);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      } finally {
+        busy.current = false;
+        setSubmitting(false);
+      }
+    },
+    [establishSession],
   );
 
   const requestEmail = useCallback(async (email: string, purpose: "reset" | "verify") => {
@@ -163,25 +218,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const deleteAccount = useCallback(async (password: string) => {
-    if (busy.current) return false;
-    busy.current = true;
-    setSubmitting(true);
-    setError(null);
-    try {
-      await api.delete("/api/auth/account", { data: { password } });
-      generation.current++;
-      setUser(null);
-      await writeSession(null);
-      return true;
-    } catch (err) {
-      setError(getErrorMessage(err));
-      return false;
-    } finally {
-      busy.current = false;
-      setSubmitting(false);
-    }
-  }, []);
+  const removeAccount = useCallback(
+    async (credentials: { password: string } | { challengeId: string; code: string }) => {
+      if (busy.current) return false;
+      busy.current = true;
+      setSubmitting(true);
+      setError(null);
+      try {
+        await api.delete("/api/auth/account", { data: credentials });
+        generation.current++;
+        setUser(null);
+        await writeSession(null);
+        return true;
+      } catch (err) {
+        setError(getErrorMessage(err));
+        return false;
+      } finally {
+        busy.current = false;
+        setSubmitting(false);
+      }
+    },
+    [],
+  );
 
   return (
     <AuthContext.Provider
@@ -193,9 +251,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         message,
         login: (email, password) => authenticate("login", email, password),
         register: (email, password) => authenticate("register", email, password),
+        requestLoginCode: (email) => requestCode("/api/auth/otp/request", { email: email.trim() }),
+        verifyLoginCode,
+        requestDeletionCode: () => requestCode("/api/auth/account/deletion-code", {}),
+        deleteAccountWithCode: (challengeId, code) => removeAccount({ challengeId, code }),
         requestEmail,
         logout,
-        deleteAccount,
+        deleteAccount: (password) => removeAccount({ password }),
         clearError,
       }}
     >

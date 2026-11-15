@@ -12,6 +12,9 @@ const config = z
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     SESSION_DAYS: z.coerce.number().int().min(1).max(30).default(7),
     REQUIRE_EMAIL_VERIFICATION: z.enum(["true", "false"]).optional(),
+    EMAIL_PROVIDER: z.enum(["smtp", "resend"]).optional(),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).optional(),
     SMTP_HOST: z.string().min(1).optional(),
     SMTP_PORT: z.coerce.number().int().positive().default(587),
     SMTP_USER: z.string().optional(),
@@ -21,6 +24,9 @@ const config = z
   .parse(process.env);
 
 const production = config.NODE_ENV === "production";
+const emailProvider =
+  config.EMAIL_PROVIDER ?? (production && config.RESEND_API_KEY ? "resend" : "smtp");
+const emailFrom = config.EMAIL_FROM ?? config.SMTP_FROM;
 const publicApiUrl =
   config.PUBLIC_API_URL ?? config.RENDER_EXTERNAL_URL ?? `http://localhost:${config.PORT}`;
 const requireEmailVerification = config.REQUIRE_EMAIL_VERIFICATION !== "false";
@@ -37,7 +43,13 @@ if (production) {
     throw new Error("Production requires an HTTPS PUBLIC_API_URL (or RENDER_EXTERNAL_URL).");
   if (!requireEmailVerification)
     throw new Error("Email verification cannot be disabled in production.");
-  if (!config.SMTP_HOST || !config.SMTP_FROM || !config.SMTP_USER || !config.SMTP_PASSWORD) {
+  if (emailProvider === "resend" && (!config.RESEND_API_KEY || !emailFrom)) {
+    throw new Error("Production requires RESEND_API_KEY and EMAIL_FROM when using Resend.");
+  }
+  if (
+    emailProvider === "smtp" &&
+    (!config.SMTP_HOST || !emailFrom || !config.SMTP_USER || !config.SMTP_PASSWORD)
+  ) {
     throw new Error("Production requires SMTP_HOST, SMTP_FROM, SMTP_USER, and SMTP_PASSWORD.");
   }
   if (corsOrigins.some((origin) => !origin.startsWith("https://")))
@@ -54,6 +66,9 @@ export const env = {
   trustProxyHops: config.TRUST_PROXY_HOPS,
   sessionDays: config.SESSION_DAYS,
   requireEmailVerification,
+  emailProvider,
+  emailFrom,
+  resendApiKey: config.RESEND_API_KEY,
   smtp: {
     host: config.SMTP_HOST,
     port: config.SMTP_PORT,

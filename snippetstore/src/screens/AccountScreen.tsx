@@ -2,11 +2,11 @@ import { useState } from "react";
 import { ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 import { AppButton } from "@/components/AppButton";
 import { AppShell } from "@/components/AppShell";
-import { AppTextInput } from "@/components/AppTextInput";
+import { EmailCodeField } from "@/components/EmailCodeField";
 import { Icon } from "@/components/Icon";
 import { PageHeading } from "@/components/PageHeading";
 import { fonts, type ThemeColors } from "@/constants/theme";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, type EmailChallenge } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { confirmAction } from "@/utils/confirm";
 
@@ -14,8 +14,17 @@ export function AccountScreen() {
   const { colors, mode, toggleTheme } = useTheme();
   const { width } = useWindowDimensions();
   const styles = createStyles(colors);
-  const { user, logout, deleteAccount, submitting, error, clearError } = useAuth();
-  const [password, setPassword] = useState("");
+  const {
+    user,
+    logout,
+    requestDeletionCode,
+    deleteAccountWithCode,
+    submitting,
+    error,
+    clearError,
+  } = useAuth();
+  const [code, setCode] = useState("");
+  const [challenge, setChallenge] = useState<EmailChallenge | null>(null);
   const [showDelete, setShowDelete] = useState(false);
   const confirmDelete = () =>
     confirmAction(
@@ -23,9 +32,16 @@ export function AccountScreen() {
       "This permanently deletes your account, snippets, categories, and sessions.",
       "Delete account",
       () => {
-        void deleteAccount(password);
+        if (challenge) void deleteAccountWithCode(challenge.challengeId, code);
       },
     );
+  const sendDeletionCode = async () => {
+    const result = await requestDeletionCode();
+    if (result) {
+      setChallenge(result);
+      setCode("");
+    }
+  };
 
   return (
     <AppShell title="Account settings">
@@ -125,19 +141,31 @@ export function AccountScreen() {
           </View>
           {showDelete ? (
             <View style={styles.deleteForm}>
-              <AppTextInput
-                label="Confirm your password"
-                value={password}
-                onChangeText={(value) => {
-                  clearError();
-                  setPassword(value);
-                }}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete="current-password"
-                placeholder="Enter your current password"
-                editable={!submitting}
-              />
+              <Text style={styles.description}>
+                {challenge
+                  ? `Enter the confirmation code we sent to ${user?.email}.`
+                  : `We’ll send a confirmation code to ${user?.email} before deleting anything.`}
+              </Text>
+              {challenge ? (
+                <EmailCodeField
+                  challenge={challenge}
+                  code={code}
+                  onChange={(value) => {
+                    clearError();
+                    setCode(value);
+                  }}
+                  onResend={() => void sendDeletionCode()}
+                  disabled={submitting}
+                />
+              ) : (
+                <AppButton
+                  title="Send deletion code"
+                  icon="mail"
+                  tone="secondary"
+                  loading={submitting}
+                  onPress={sendDeletionCode}
+                />
+              )}
               {error ? (
                 <Text accessibilityRole="alert" style={styles.error}>
                   {error}
@@ -150,18 +178,21 @@ export function AccountScreen() {
                   disabled={submitting}
                   onPress={() => {
                     setShowDelete(false);
-                    setPassword("");
+                    setCode("");
+                    setChallenge(null);
                     clearError();
                   }}
                 />
-                <AppButton
-                  title="Delete account"
-                  tone="danger"
-                  icon="trash-2"
-                  loading={submitting}
-                  disabled={!password || submitting}
-                  onPress={confirmDelete}
-                />
+                {challenge ? (
+                  <AppButton
+                    title="Delete account"
+                    tone="danger"
+                    icon="trash-2"
+                    loading={submitting}
+                    disabled={code.length !== 6 || submitting}
+                    onPress={confirmDelete}
+                  />
+                ) : null}
               </View>
             </View>
           ) : (

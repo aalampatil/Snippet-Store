@@ -21,6 +21,9 @@ function check(overrides: Record<string, string | undefined>) {
     PORT: "3000",
     TRUST_PROXY_HOPS: "1",
     SESSION_DAYS: "7",
+    EMAIL_PROVIDER: "smtp",
+    EMAIL_FROM: "test@example.com",
+    RESEND_API_KEY: undefined,
     ...overrides,
   };
   delete variables.PUBLIC_API_URL;
@@ -45,6 +48,45 @@ test("production refuses missing mail credentials", () => {
   const result = check({ SMTP_PASSWORD: undefined });
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Production requires SMTP/);
+});
+
+test("production accepts Resend without SMTP credentials", () => {
+  assert.equal(
+    check({
+      EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "re_test_key",
+      EMAIL_FROM: "Snippet Store <test@example.com>",
+      SMTP_HOST: undefined,
+      SMTP_USER: undefined,
+      SMTP_PASSWORD: undefined,
+    }).status,
+    0,
+  );
+});
+
+test("production refuses incomplete Resend configuration", () => {
+  assert.notEqual(check({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: undefined }).status, 0);
+  assert.notEqual(
+    check({
+      EMAIL_PROVIDER: "resend",
+      RESEND_API_KEY: "re_test_key",
+      EMAIL_FROM: undefined,
+      SMTP_FROM: undefined,
+    }).status,
+    0,
+  );
+});
+
+test("production automatically selects configured Resend", () => {
+  assert.equal(
+    check({
+      EMAIL_PROVIDER: undefined,
+      RESEND_API_KEY: "re_test_key",
+      SMTP_HOST: undefined,
+      SMTP_PASSWORD: undefined,
+    }).status,
+    0,
+  );
 });
 test("production refuses verification bypass", () => {
   const result = check({ REQUIRE_EMAIL_VERIFICATION: "false" });

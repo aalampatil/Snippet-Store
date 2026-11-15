@@ -2,7 +2,7 @@ import { lt } from "drizzle-orm";
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { db, pool } from "./db/index.js";
-import { authTokens, sessions } from "./db/schema.js";
+import { authTokens, emailChallenges, sessions } from "./db/schema.js";
 
 async function start() {
   await pool.query("select 1");
@@ -14,6 +14,9 @@ async function start() {
       void Promise.all([
         db.delete(sessions).where(lt(sessions.expiresAt, new Date())),
         db.delete(authTokens).where(lt(authTokens.expiresAt, new Date())),
+        db
+          .delete(emailChallenges)
+          .where(lt(emailChallenges.windowStartedAt, new Date(Date.now() - 86400000))),
       ]).catch(() => console.error("Expired credential cleanup failed."));
     },
     60 * 60 * 1000,
